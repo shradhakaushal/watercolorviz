@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — gallery</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <style>
+      body {
+        margin: 0;
+        background: #e9e4d8;
+        font-family: system-ui, sans-serif;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 16px;
+      }
+      canvas {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — palette swatches &amp; pigment blending</h1>
+    <canvas id="c" width="900" height="320"></canvas>
+
+    <script type="module">
+      import { paintPolygon, regularPolygon } from '../src/watercolor.js';
+      import { paintPaper } from '../src/paper.js';
+      import { VIVID } from '../src/palette.js';
+
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+
+      paintPaper(ctx, canvas.width, canvas.height);
+
+      // One blob per palette color across the top.
+      VIVID.forEach((color, i) => {
+        const cx = 90 + i * 150;
+        const base = regularPolygon(cx, 120, 62);
+        paintPolygon(ctx, base, { color, seed: 11 + i * 7 });
+      });
+
+      // Two overlapping blobs to show pigments blending where they meet.
+      paintPolygon(ctx, regularPolygon(760, 130, 70), {
+        color: VIVID[0], // blue
+        seed: 3,
+      });
+      paintPolygon(ctx, regularPolygon(820, 130, 70), {
+        color: VIVID[2], // yellow
+        seed: 9,
+      });
+    </script>
+  </body>
+</html>

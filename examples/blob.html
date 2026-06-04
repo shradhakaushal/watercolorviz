@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — Phase 0: single-blob tuning</title>
+    <!-- D3 from CDN as an ES module; no build step required. -->
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #e9e4d8;
+        color: #2c2a25;
+        display: flex;
+        gap: 24px;
+        padding: 24px;
+        align-items: flex-start;
+      }
+      canvas {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+        border-radius: 2px;
+      }
+      .panel {
+        width: 260px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+      .row {
+        display: flex;
+        flex-direction: column;
+        font-size: 12px;
+        gap: 4px;
+      }
+      .row label {
+        display: flex;
+        justify-content: space-between;
+      }
+      .row output {
+        color: #7a4dbd;
+        font-variant-numeric: tabular-nums;
+      }
+      .swatches {
+        display: flex;
+        gap: 6px;
+      }
+      .swatches button {
+        width: 28px;
+        height: 28px;
+        border: 2px solid transparent;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .swatches button.active {
+        border-color: #2c2a25;
+      }
+      .meta {
+        font-size: 11px;
+        color: #6b665c;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="560" height="560"></canvas>
+
+    <div class="panel">
+      <h1>🎨 watercolor blob</h1>
+      <div class="meta" id="meta"></div>
+
+      <div class="swatches" id="swatches"></div>
+
+      <div class="row">
+        <label>bleed (feather) <output id="bleed-v"></output></label>
+        <input id="bleed" type="range" min="0.03" max="0.35" step="0.005" />
+      </div>
+      <div class="row">
+        <label>wobble (mottle) <output id="wobble-v"></output></label>
+        <input id="wobble" type="range" min="0" max="0.35" step="0.01" />
+      </div>
+      <div class="row">
+        <label>blooms <output id="blooms-v"></output></label>
+        <input id="blooms" type="range" min="0" max="30" step="1" />
+      </div>
+      <div class="row">
+        <label>edgeDarkening <output id="edgeDarkening-v"></output></label>
+        <input id="edgeDarkening" type="range" min="0" max="1.5" step="0.05" />
+      </div>
+      <div class="row">
+        <label>variegation <output id="variegation-v"></output></label>
+        <input id="variegation" type="range" min="0" max="0.3" step="0.01" />
+      </div>
+      <div class="row">
+        <label>granulation <output id="granulation-v"></output></label>
+        <input id="granulation" type="range" min="0" max="0.8" step="0.02" />
+      </div>
+      <div class="row">
+        <label>shading (depth) <output id="shading-v"></output></label>
+        <input id="shading" type="range" min="0" max="1.2" step="0.05" />
+      </div>
+      <div class="row">
+        <label>layers <output id="layers-v"></output></label>
+        <input id="layers" type="range" min="10" max="140" step="1" />
+      </div>
+      <div class="row">
+        <label>intensity (light↔dark) <output id="intensity-v"></output></label>
+        <input id="intensity" type="range" min="0.3" max="2.2" step="0.05" />
+      </div>
+      <div class="row">
+        <label>seed <output id="seed-v"></output></label>
+        <input id="seed" type="range" min="1" max="200" step="1" />
+      </div>
+      <label class="row" style="flex-direction: row; gap: 8px;">
+        <input id="texture" type="checkbox" checked /> paper texture
+      </label>
+      <label class="row" style="flex-direction: row; gap: 8px;">
+        <input id="outline" type="checkbox" /> ink outline
+      </label>
+    </div>
+
+    <script type="module">
+      import { paintPolygon, regularPolygon } from '../src/watercolor.js';
+      import { paintPaper } from '../src/paper.js';
+      import { VIVID } from '../src/palette.js';
+
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+      // Coral first, to compare against the watercolor reference, then the
+      // vivid palette.
+      const CORAL = '#cd7d68';
+      const swatchColors = [CORAL, ...VIVID];
+      let color = CORAL;
+
+      const defaults = {
+        bleed: 0.05,
+        wobble: 0.08,
+        blooms: 9,
+        edgeDarkening: 1,
+        variegation: 0.09,
+        granulation: 0.35,
+        shading: 0.7,
+        layers: 28,
+        intensity: 1,
+        seed: 7,
+        texture: true,
+        outline: false,
+      };
+
+      const sliderKeys = ['bleed', 'wobble', 'blooms', 'edgeDarkening', 'variegation', 'granulation', 'shading', 'layers', 'intensity', 'seed'];
+      const inputs = {};
+      for (const key of sliderKeys) {
+        inputs[key] = document.getElementById(key);
+        inputs[key].value = defaults[key];
+        inputs[key].addEventListener('input', render);
+      }
+      inputs.texture = document.getElementById('texture');
+      inputs.texture.checked = defaults.texture;
+      inputs.texture.addEventListener('input', render);
+      inputs.outline = document.getElementById('outline');
+      inputs.outline.checked = defaults.outline;
+      inputs.outline.addEventListener('input', render);
+
+      // Color swatches.
+      const swatchBox = document.getElementById('swatches');
+      swatchColors.forEach((c, i) => {
+        const b = document.createElement('button');
+        b.style.background = c;
+        if (i === 0) b.classList.add('active');
+        b.addEventListener('click', () => {
+          color = c;
+          [...swatchBox.children].forEach((el) => el.classList.remove('active'));
+          b.classList.add('active');
+          render();
+        });
+        swatchBox.appendChild(b);
+      });
+
+      function render() {
+        const opts = {
+          color,
+          bleed: +inputs.bleed.value,
+          wobble: +inputs.wobble.value,
+          blooms: +inputs.blooms.value,
+          edgeDarkening: +inputs.edgeDarkening.value,
+          variegation: +inputs.variegation.value,
+          granulation: +inputs.granulation.value,
+          shading: +inputs.shading.value,
+          layers: +inputs.layers.value,
+          intensity: +inputs.intensity.value,
+          seed: +inputs.seed.value,
+          texture: inputs.texture.checked,
+          outline: inputs.outline.checked,
+        };
+
+        for (const key of sliderKeys) {
+          document.getElementById(`${key}-v`).textContent = opts[key];
+        }
+
+        paintPaper(ctx, canvas.width, canvas.height);
+
+        const base = regularPolygon(canvas.width / 2, canvas.height / 2, 150);
+
+        const t0 = performance.now();
+        paintPolygon(ctx, base, opts);
+        const ms = (performance.now() - t0).toFixed(1);
+        document.getElementById('meta').textContent =
+          `${opts.layers} layers · painted in ${ms} ms`;
+      }
+
+      render();
+    </script>
+  </body>
+</html>

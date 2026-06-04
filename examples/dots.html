@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — colored dots (vs reference 1)</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <style>
+      body { margin: 0; background: #e9e4d8; font-family: system-ui, sans-serif; padding: 20px; }
+      h1 { font-size: 15px; margin: 0 0 12px; }
+      canvas { box-shadow: 0 6px 24px rgba(0,0,0,0.18); border-radius: 2px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 colored dots — defined edge · edge-darkening · blooms · form shading</h1>
+    <canvas id="c" width="560" height="560"></canvas>
+
+    <script type="module">
+      const { paintPolygon, regularPolygon } = await import('../src/watercolor.js');
+      const { paintPaper } = await import('../src/paper.js');
+
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+      paintPaper(ctx, canvas.width, canvas.height);
+
+      // Saturated colors echoing reference 1 (crimson, green, orange, blue).
+      const dots = [
+        { color: '#d6405e', cx: 150, cy: 150, r: 95, seed: 4 },
+        { color: '#5cb85a', cx: 410, cy: 150, r: 95, seed: 8 },
+        { color: '#ef8f3c', cx: 280, cy: 300, r: 110, seed: 12 },
+        { color: '#3f7fd1', cx: 200, cy: 450, r: 100, seed: 17 },
+      ];
+
+      for (const d of dots) {
+        paintPolygon(ctx, regularPolygon(d.cx, d.cy, d.r), {
+          color: d.color,
+          seed: d.seed,
+        });
+      }
+    </script>
+  </body>
+</html>
