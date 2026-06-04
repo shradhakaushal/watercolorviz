@@ -9,10 +9,10 @@ import { hexToRgb } from './palette.js';
 
 export function paintPaper(ctx, width, height, opts = {}) {
   const {
-    color = '#f3efe2', // warm cream
+    color = '#f9f1e6', // warm cream
     seed = 7,
     scale = 0.16, // paper tooth frequency (larger = finer grain)
-    strength = 6, // tooth contrast (luminance ± per pixel) — subtle
+    strength = 4, // tooth contrast (luminance ± per pixel) — subtle
     vignette = true,
   } = opts;
 
