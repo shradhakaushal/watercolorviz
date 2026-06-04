@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "run": "./scripts/dev.sh"
+  },
+  "runScriptMode": "concurrent"
+}

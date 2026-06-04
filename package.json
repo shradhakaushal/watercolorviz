@@ -1,0 +1,15 @@
+{
+  "name": "watercolorviz",
+  "version": "0.0.0",
+  "description": "Watercolor-style data visualizations for the browser.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "./scripts/dev.sh"
+  },
+  "keywords": ["dataviz", "watercolor", "charts", "canvas", "d3"],
+  "license": "MIT",
+  "peerDependencies": {
+    "d3": "^7"
+  }
+}

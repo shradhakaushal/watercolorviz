@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — elite options (intensity &amp; ink outline)</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <style>
+      body { margin: 0; background: #e9e4d8; font-family: system-ui, sans-serif; padding: 24px; }
+      h1 { font-size: 16px; margin: 0 0 16px; }
+      canvas { box-shadow: 0 6px 24px rgba(0,0,0,0.18); border-radius: 2px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 elite options — fill intensity (light→dark) × ink outline (off/on)</h1>
+    <canvas id="c" width="760" height="460"></canvas>
+
+    <script type="module">
+      import { paintPolygon, regularPolygon } from '../src/watercolor.js';
+      import { paintPaper } from '../src/paper.js';
+
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+      paintPaper(ctx, canvas.width, canvas.height);
+
+      const color = '#5b9e57'; // muted watercolor green, like the reference
+      const intensities = [0.5, 1.0, 1.7];
+      const labels = ['light', 'medium', 'dark'];
+
+      ctx.fillStyle = '#3a372f';
+      ctx.font = '13px system-ui';
+
+      intensities.forEach((intensity, col) => {
+        const cx = 150 + col * 230;
+        // Row 1: no outline
+        paintPolygon(ctx, regularPolygon(cx, 150, 70), {
+          color, intensity, seed: 5 + col,
+        });
+        // Row 2: with ink outline
+        paintPolygon(ctx, regularPolygon(cx, 340, 70), {
+          color, intensity, outline: true, seed: 25 + col,
+        });
+        ctx.textAlign = 'center';
+        ctx.fillText(`intensity ${intensity}  (${labels[col]})`, cx, 60);
+      });
+
+      ctx.textAlign = 'left';
+      ctx.fillText('no outline →', 12, 154);
+      ctx.fillText('ink outline →', 12, 344);
+    </script>
+  </body>
+</html>
