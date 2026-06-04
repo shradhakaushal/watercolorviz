@@ -14,14 +14,20 @@ export class Chart {
     const width = config.width || 460;
     const height = config.height || 300;
 
-    // `el` may be a canvas, a DOM container, or a selector string.
+    // `el` may be a canvas, a DOM container, or a selector string. Resolve a
+    // selector to its element FIRST, then decide: if it's already a canvas use
+    // it directly; otherwise create a canvas inside it. (Appending a canvas
+    // *inside* a <canvas> would render nothing — it becomes fallback content.)
+    const target = typeof el === 'string' ? document.querySelector(el) : el;
+    if (!target) {
+      throw new Error(`watercolorviz: no element found for "${el}"`);
+    }
     let canvas;
-    if (el && typeof el.getContext === 'function') {
-      canvas = el;
+    if (typeof target.getContext === 'function') {
+      canvas = target; // already a <canvas>
     } else {
-      const host = typeof el === 'string' ? document.querySelector(el) : el;
       canvas = document.createElement('canvas');
-      if (host) host.appendChild(canvas);
+      target.appendChild(canvas);
     }
     canvas.width = width;
     canvas.height = height;

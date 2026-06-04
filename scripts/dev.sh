@@ -17,6 +17,7 @@ cd "$(dirname "$0")/.."
 
 echo "🎨 watercolorviz dev server"
 echo "   Blob demo : http://localhost:${PORT}/examples/blob.html"
+echo "   Bar chart : http://localhost:${PORT}/examples/bars.html"
 echo "   Repo root : http://localhost:${PORT}/"
 echo
 
