@@ -37,9 +37,8 @@
     </style>
   </head>
   <body>
-    <h1>🎨 watercolorviz — bar charts</h1>
+    <h1>🎨 watercolorviz — bar chart</h1>
     <canvas id="a"></canvas>
-    <canvas id="b"></canvas>
 
     <script type="module">
       const { Bar } = await import('../src/index.js');
@@ -62,15 +61,6 @@
         colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb'],
         yLabel: 'value',
         seed: 7,
-      });
-
-      new Bar('#b', {
-        title: 'Rainfall (mm)',
-        data: {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-          values: [42, 38, 61, 55, 73, 49],
-        },
-        seed: 21,
       });
     </script>
   </body>
