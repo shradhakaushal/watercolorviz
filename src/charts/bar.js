@@ -68,10 +68,12 @@ export class Bar extends Chart {
         color,
         seed: seed + i * 13,
         outline: true,
-        intensity: 1.1, // a touch more saturated, like the reference bars
+        intensity: 1.1, // dense enough to read as pigment, grain still shows
         bleed: 0.03, // keep it rectangular; just a hand-painted waver
-        shading: 0.5, // bars read flatter than blobs
-        mottle: 0.4,
+        shading: 0.15, // a flat matte wash — NOT a glossy 3D gradient
+        mottle: 0.28, // gentle cloud; let the grain (not big blotches) dominate
+        granulation: 0.55, // strong cold-press paper grain (the reference look)
+        paperScale: 0.3, // finer tooth → fine even speckle, not soft blobs
       });
     });
 
