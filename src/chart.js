@@ -7,6 +7,7 @@
 // `render()`.
 
 import { paintPaper } from './paper.js';
+import { inkLine, arrowhead } from './axes.js';
 
 export class Chart {
   constructor(el, config = {}) {
@@ -80,6 +81,29 @@ export class Chart {
     ctx.fillStyle = color;
     ctx.fillText(str, x, y);
     ctx.restore();
+  }
+
+  // L-shaped hand-drawn ink axes with little arrowheads (x along the bottom,
+  // y up the left). Shared by the rectangular-wash charts.
+  drawAxisLines() {
+    const { ctx, plot, seed } = this;
+    inkLine(ctx, plot.x0, plot.y1, plot.x1 + 8, plot.y1, { seed: seed + 1 });
+    arrowhead(ctx, plot.x1 + 12, plot.y1, 1, 0);
+    inkLine(ctx, plot.x0, plot.y1, plot.x0, plot.y0 - 8, { seed: seed + 2 });
+    arrowhead(ctx, plot.x0, plot.y0 - 12, 0, -1);
+  }
+
+  drawTitleAndLabels() {
+    const { plot, config, ctx } = this;
+    if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
+    if (config.yLabel) {
+      ctx.save();
+      ctx.translate(14, plot.y0 + plot.h / 2);
+      ctx.rotate(-Math.PI / 2);
+      this.text(config.yLabel, 0, 0, { size: 14 });
+      ctx.restore();
+    }
+    if (config.xLabel) this.text(config.xLabel, plot.x0 + plot.w / 2, this.height - 8, { size: 14 });
   }
 
   // Subclasses override.
