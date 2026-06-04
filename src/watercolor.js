@@ -145,9 +145,9 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     shading = 1.0, // directional wash gradient (NOT a sphere)
     lightAngle = -1.05, // light from the upper-right
     outline = false,
-    outlineColor = '#2b2b2b',
-    outlineWidth = 1.1,
-    outlineOpacity = 0.75,
+    outlineColor = '#3b332b', // warm dark ink, not a hard pure black
+    outlineWidth = 1.7, // base nib width; swells thicker, tapers thinner
+    outlineOpacity = 0.82,
     texture = false,
     speckles = 0,
     paperSeed = 7,
@@ -165,7 +165,7 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
   // heads toward this tone, so pools read as rich pigment, not mud. Hue-general:
   // push each channel away from the brightest one (raise saturation).
   const mx = Math.max(br, bg, bb);
-  const sat = 0.55;
+  const sat = 0.5;
   const deepR = clamp255(br - (mx - br) * sat);
   const deepG = clamp255(bg - (mx - bg) * sat);
   const deepB = clamp255(bb - (mx - bb) * sat);
@@ -258,10 +258,10 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     // Walk a small circle through the noise field → periodic around the ring.
     const lo = fbm(Math.cos(ang) * 2.0 + 7, Math.sin(ang) * 2.0 + 7, seed + 3, 2);
     const hi = fbm(Math.cos(ang) * 8 + 19, Math.sin(ang) * 8 + 19, seed + 5, 2);
-    const rr = 1 + (lo - 0.5) * bleed * 1.8 + (hi - 0.5) * bleed * 0.45;
+    const rr = 1 + (lo - 0.5) * bleed * 1.8 + (hi - 0.5) * bleed * 0.25;
     return [cx + (x - cx) * rr, cy + (y - cy) * rr];
   });
-  const boundary = chaikin(bJit, 2);
+  const boundary = chaikin(bJit, 3);
 
   octx.save();
   tracePath(octx, boundary);
@@ -421,21 +421,38 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     octx.putImageData(im, 0, 0);
   }
 
-  // --- 4. Optional tight hand-drawn ink boundary, on top of everything.
+  // --- 4. Optional ink line (line-and-wash). NOT a uniform pen stroke — that
+  // reads as a wiry vector outline. A real ink-and-wash line:
+  //   • follows the wash edge but with fountain-pen WIDTH SWELLS (mostly thin,
+  //     swelling thick here and there) → a sense of weight and form;
+  //   • varies in darkness along its length;
+  //   • LIFTS in places, leaving gaps (a broken, gestural line);
+  //   • is a warm dark ink, not a hard pure black.
+  // Drawn as many round-capped segments along the ACTUAL boundary, so it
+  // registers with the pigment instead of floating around it.
   if (outline) {
     octx.save();
     octx.translate(-ox, -oy);
-    const v = r * bleed * 0.4;
-    const start = basePoints.map(([x, y]) => [
-      x + gauss() * v * 0.2,
-      y + gauss() * v * 0.2,
-    ]);
-    const contour = deform(start, 4, v, gauss, 2.8);
     const [or_, og, ob] = hexToRgb(outlineColor);
-    tracePath(octx, contour);
-    octx.strokeStyle = `rgba(${or_},${og},${ob},${outlineOpacity})`;
-    octx.lineWidth = outlineWidth;
-    octx.stroke();
+    octx.lineCap = 'round';
+    octx.lineJoin = 'round';
+    const N = boundary.length;
+    for (let i = 0; i < N; i++) {
+      const a = boundary[i];
+      const b = boundary[(i + 1) % N];
+      // Smooth fields along the path: one drives the width swell, one the lift.
+      const sw = fbm(a[0] * 0.018, a[1] * 0.018, seed + 71, 3);
+      const lift = fbm(a[0] * 0.03 + 5, a[1] * 0.03 + 5, seed + 97, 2);
+      if (lift < 0.33) continue; // pen lifted off the paper → a gap
+      const w = outlineWidth * (0.35 + sw * sw * 1.9); // mostly thin, occ. thick
+      const alpha = Math.min(1, outlineOpacity * (0.5 + sw * 0.8));
+      octx.beginPath();
+      octx.moveTo(a[0], a[1]);
+      octx.lineTo(b[0], b[1]);
+      octx.strokeStyle = `rgba(${or_},${og},${ob},${alpha})`;
+      octx.lineWidth = w;
+      octx.stroke();
+    }
     octx.restore();
   }
 
