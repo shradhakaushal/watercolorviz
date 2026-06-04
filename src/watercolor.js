@@ -1,22 +1,29 @@
 // Watercolor paint engine — the make-or-break core of the library.
 //
-// Canonical generative-watercolor washes (Tyler Hobbs / Sighack) PLUS the
-// physical effects that separate "top-tier" from "fine":
+// Tuned against real watercolor references. The guiding insight: a flat wash is
+// NOT a shaded sphere. Pigment stays a translucent, luminous FILM; what varies
+// is its CONCENTRATION — and as it concentrates it grows more SATURATED (the
+// dominant channel holds, the others drop), it does not turn grey. Every
+// "deepening" here heads toward a single saturated `deep` tone, so pools read as
+// rich pigment, never mud.
 //
-//   washes        many INDEPENDENT deformations of the base (never scaled
-//                 copies — those make a lifeless gradient), stacked at low
-//                 opacity → translucent, mottled body.
-//   blooms        smaller interior patches → pigment pooling / back-runs.
-//   edge darkening faint dark stroke per wash → pigment migrates to the rim.
-//   granulation   pigment is pulled OFF the peaks of the shared paper-tooth
-//                 noise field, so it settles into the paper's valleys exactly
-//                 like real granulating pigment. (Coherent with the paper.)
-//   shading       a directional value gradient (light → dark) gives the wash
-//                 luminous, near-spherical depth instead of a flat disc.
+//   washes        translucent layers build the body over the warm paper.
+//   boundary      one crisp, gently-undulating edge (low-frequency radial
+//                 noise — hand-painted wobble, not regular scallops). The wash
+//                 is clipped to it: a defined wet-on-dry edge, not a halo.
+//   edge bead     soft, patchy, multi-pass darkening just inside the rim, where
+//                 pigment pools as the wash dries.
+//   shading       a gentle DIRECTIONAL wash gradient: the far-from-light side
+//                 deepens (more saturated + more opaque), the lit side dilutes
+//                 toward paper. No specular highlight — a flat wash, not a ball.
+//   mottle        broad two-scale noise that locally pools/thins the pigment →
+//                 soft cloudy unevenness.
+//   granulation   pigment pulled OFF the peaks of the shared paper-tooth noise
+//                 field so it settles into the valleys, coherent with the paper.
 //
-// The mark is painted to an OFFSCREEN canvas so granulation/shading affect only
-// the pigment, then composited onto the paper. (This is also the per-mark cache
-// point for charts later.)
+// The mark is painted to an OFFSCREEN canvas so the per-pixel pigment field
+// (granulation/shading/mottle) affects only the pigment, then composited onto
+// the paper. (This is also the per-mark cache point for charts later.)
 
 import * as d3 from 'd3';
 import { hexToRgb } from './palette.js';
@@ -110,10 +117,11 @@ function makeCanvas(w, h) {
 //   bleed          edge feather (× mean radius)
 //   wobble         per-wash size variation → interior mottling
 //   blooms / bloomStrength   interior pigment pools
-//   edgeDarkening  dark rim deposit strength
-//   variegation    per-wash color jitter
+//   edgeDarkening  soft rim-bead deposit strength
+//   variegation    per-wash tonal variation (deepen/dilute, never a hue shift)
 //   granulation    pigment pulled off paper-tooth peaks (0 = none)
-//   shading        directional value gradient strength (0 = flat)
+//   mottle         broad cloudy pooling/thinning of the pigment (0 = even)
+//   shading        directional wash-gradient strength (0 = flat, no sphere)
 //   lightAngle     light direction in radians (default upper-right)
 //   outline        thin tight hand-drawn ink boundary (bool)
 //   outlineColor / outlineWidth / outlineOpacity
@@ -122,19 +130,20 @@ function makeCanvas(w, h) {
 //   seed           seeds the deterministic RNG
 export function paintPolygon(ctx, basePoints, opts = {}) {
   const {
-    color = '#cd7d68',
+    color = '#ff8a72',
     intensity = 1,
-    layers = 28,
-    layerOpacity = 0.03,
+    layers = 22,
+    layerOpacity = 0.036,
     bleed = 0.05,
     wobble = 0.08,
-    blooms = 10,
-    bloomStrength = 1.45,
-    edgeDarkening = 1,
-    variegation = 0.13,
-    granulation = 0.3,
-    shading = 0.8,
-    lightAngle = -Math.PI / 4,
+    blooms = 5,
+    bloomStrength = 1.15,
+    edgeDarkening = 1.0,
+    variegation = 0.1,
+    granulation = 0.18,
+    mottle = 0.45, // low-frequency tonal unevenness (soft pooling clouds)
+    shading = 1.0, // directional wash gradient (NOT a sphere)
+    lightAngle = -1.05, // light from the upper-right
     outline = false,
     outlineColor = '#2b2b2b',
     outlineWidth = 1.1,
@@ -149,6 +158,17 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
   const rng = makeRng(seed);
   const gauss = d3.randomNormal.source(rng)(0, 1);
   const [br, bg, bb] = hexToRgb(color);
+
+  // Concentrated ("deep") tone: as watercolor pigment pools it grows MORE
+  // saturated — the dominant channel holds while the others drop — it does NOT
+  // just turn grey/dark. Every deepening pass (edge, shade, blooms, mottle)
+  // heads toward this tone, so pools read as rich pigment, not mud. Hue-general:
+  // push each channel away from the brightest one (raise saturation).
+  const mx = Math.max(br, bg, bb);
+  const sat = 0.55;
+  const deepR = clamp255(br - (mx - br) * sat);
+  const deepG = clamp255(bg - (mx - bg) * sat);
+  const deepB = clamp255(bb - (mx - bb) * sat);
 
   const centroid = centroidOf(basePoints);
   const [cx, cy] = centroid;
@@ -192,10 +212,25 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     octx.restore();
   }
 
-  function paintBlob(pts, alpha, jitter, darkenEdge) {
-    const lr = clamp255(br * (1 + gauss() * jitter));
-    const lg = clamp255(bg * (1 + gauss() * jitter));
-    const lb = clamp255(bb * (1 + gauss() * jitter));
+  function paintBlob(pts, alpha, jitter, darkenEdge, rgb = [br, bg, bb]) {
+    // Per-wash tonal variation expressed the way pigment actually varies:
+    // randomly a touch MORE concentrated (toward the saturated deep tone) or a
+    // touch more DILUTE (toward white). Never a raw per-channel multiply — that
+    // clips the dominant channel and biases the average toward mud.
+    const s = gauss() * jitter;
+    let lr = rgb[0];
+    let lg = rgb[1];
+    let lb = rgb[2];
+    if (s > 0) {
+      lr = clamp255(lr + (deepR - lr) * s);
+      lg = clamp255(lg + (deepG - lg) * s);
+      lb = clamp255(lb + (deepB - lb) * s);
+    } else {
+      const t = -s * 0.6;
+      lr = clamp255(lr + (255 - lr) * t);
+      lg = clamp255(lg + (255 - lg) * t);
+      lb = clamp255(lb + (255 - lb) * t);
+    }
     tracePath(octx, pts);
     octx.fillStyle = `rgba(${lr},${lg},${lb},${alpha})`;
     octx.fill();
@@ -213,11 +248,20 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
 
   // ONE crisp, slightly-irregular boundary defines the edge. Everything is
   // clipped to it, so the wash has a defined edge (wet-on-dry) — not a halo.
-  const bJit = basePoints.map(([x, y]) => [
-    x + gauss() * r * bleed * 0.15,
-    y + gauss() * r * bleed * 0.15,
-  ]);
-  const boundary = chaikin(deform(bJit, 3, r * bleed * 0.35, gauss, 2.6), 3);
+  //
+  // The wobble is generated by perturbing each vertex's RADIUS with a smooth
+  // noise field sampled around the ring. This gives gentle, low-frequency
+  // hand-painted undulation (a few soft lobes) plus a touch of fine roughness —
+  // NOT the regular high-frequency scallops that midpoint displacement creates.
+  const bJit = basePoints.map(([x, y]) => {
+    const ang = Math.atan2(y - cy, x - cx);
+    // Walk a small circle through the noise field → periodic around the ring.
+    const lo = fbm(Math.cos(ang) * 2.0 + 7, Math.sin(ang) * 2.0 + 7, seed + 3, 2);
+    const hi = fbm(Math.cos(ang) * 8 + 19, Math.sin(ang) * 8 + 19, seed + 5, 2);
+    const rr = 1 + (lo - 0.5) * bleed * 1.8 + (hi - 0.5) * bleed * 0.45;
+    return [cx + (x - cx) * rr, cy + (y - cy) * rr];
+  });
+  const boundary = chaikin(bJit, 2);
 
   octx.save();
   tracePath(octx, boundary);
@@ -251,77 +295,130 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
       y + gauss() * bv,
     ]);
     const bloom = deform(base, 4, bv, gauss, 2);
-    paintBlob(bloom, washAlpha * bloomStrength, variegation * 1.4, 0);
+    // Pools are more concentrated → tint partway toward the deep tone.
+    const t = 0.5;
+    const bloomRgb = [
+      br + (deepR - br) * t,
+      bg + (deepG - bg) * t,
+      bb + (deepB - bb) * t,
+    ];
+    paintBlob(bloom, washAlpha * bloomStrength, variegation * 1.4, 0, bloomRgb);
   }
 
-  // Edge darkening: darker pigment pooled just INSIDE the boundary. A few
-  // jittered wide strokes of a darker tone, clipped to the boundary, leave only
-  // their inner half — an uneven dark rim, the signature wet-on-dry edge.
+  // Edge darkening: darker pigment pooled just INSIDE the boundary, the
+  // signature wet-on-dry rim. Drawn as many short segments along the boundary
+  // whose opacity is driven by a low-frequency noise field, so the rim is
+  // PATCHY (dark in places, near-absent in others) — never a uniform ring.
+  // Each stroke straddles the clip edge, so only its inner half survives.
   if (edgeDarkening > 0) {
-    const dr = (br * 0.5) | 0;
-    const dg = (bg * 0.5) | 0;
-    const db = (bb * 0.5) | 0;
-    for (let p = 0; p < 4; p++) {
-      const cj = boundary.map(([x, y]) => [
-        x + gauss() * r * 0.012,
-        y + gauss() * r * 0.012,
-      ]);
-      tracePath(octx, cj);
-      octx.strokeStyle = `rgba(${dr},${dg},${db},${0.1 * edgeDarkening})`;
-      octx.lineWidth = r * 0.05 * (0.7 + rng() * 0.7);
-      octx.stroke();
+    const N = boundary.length;
+    octx.lineCap = 'round';
+    octx.lineJoin = 'round';
+    // Several passes centered on the boundary: a narrow, strong bead right at
+    // the edge plus wider, fainter passes that reach inward — only the inner
+    // half of each survives the clip, so they stack into a soft band that is
+    // darkest at the rim and fades inward. Opacity is noise-modulated so the
+    // bead is uneven (darker in places) like a real drying edge.
+    const passes = [
+      [0.09, 0.16],
+      [0.18, 0.1],
+      [0.3, 0.06],
+    ];
+    for (const [pw, pa] of passes) {
+      for (let i = 0; i < N; i++) {
+        const a = boundary[i];
+        const b = boundary[(i + 1) % N];
+        const n = fbm(a[0] * 0.03, a[1] * 0.03, seed + 11, 3); // patchy
+        const m = 0.12 + Math.max(0, n - 0.18) / 0.82; // mostly faint, patchy
+        const alpha = Math.min(0.85, pa * edgeDarkening * m);
+        if (alpha < 0.01) continue;
+        octx.beginPath();
+        octx.moveTo(a[0], a[1]);
+        octx.lineTo(b[0], b[1]);
+        octx.strokeStyle = `rgba(${deepR},${deepG},${deepB},${alpha})`;
+        octx.lineWidth = r * pw * (0.7 + n * 0.6);
+        octx.stroke();
+      }
     }
   }
 
   octx.restore(); // drop clip
   octx.restore(); // drop translate
 
-  // --- 2. Granulation: pull pigment off the paper-tooth PEAKS (sampled in
-  // global coords with the same seed/scale as the paper), so it settles into
-  // the valleys. This is the grainy, mottled texture of real granulating paint.
-  if (granulation > 0) {
+  // --- 2. Per-pixel pigment field: granulation, tonal mottle and the
+  // directional wash gradient, all in one pass over the pigment.
+  //
+  //   granulation  pulls pigment OFF the paper-tooth peaks (sampled in global
+  //                coords with the paper's seed/scale) so it settles into the
+  //                valleys — the grainy texture of granulating paint.
+  //   shading      a directional pigment gradient: the far-from-light side
+  //                DEEPENS toward the saturated tone, the lit side DILUTES
+  //                toward paper. Like a real wash drying on tilted paper. NOT a
+  //                sphere — no specular highlight, no grey shadow.
+  //   mottle       a broad noise field that locally deepens / dilutes the
+  //                pigment → soft cloudy pooling, the hallmark of a flat wash.
+  //
+  // Deepening/diluting is done by blending toward the deep tone (sat. pigment)
+  // or by lifting green/blue toward paper — this keeps RED high, exactly how
+  // real pigment behaves, so washes never turn muddy/grey.
+  if (granulation > 0 || mottle > 0 || shading > 0) {
     const im = octx.getImageData(0, 0, w, h);
     const dt = im.data;
+    const mscale = paperScale * 0.1; // coarse, cloudy tonal field
+    const dxl = Math.cos(lightAngle);
+    const dyl = Math.sin(lightAngle);
     for (let yy = 0; yy < h; yy++) {
       for (let xx = 0; xx < w; xx++) {
         const i = (yy * w + xx) * 4;
         const a = dt[i + 3];
         if (a === 0) continue;
-        const n = fbm((xx + ox) * paperScale, (yy + oy) * paperScale, paperSeed, 4);
-        const peak = n > 0.5 ? (n - 0.5) * 2 : 0; // 0..1 on raised tooth
-        dt[i + 3] = a * (1 - peak * granulation);
+
+        if (granulation > 0) {
+          const n = fbm((xx + ox) * paperScale, (yy + oy) * paperScale, paperSeed, 4);
+          const peak = n > 0.5 ? (n - 0.5) * 2 : 0; // 0..1 on raised tooth
+          dt[i + 3] = a * (1 - peak * granulation);
+        }
+
+        let deepen = 0;
+        let dilute = 0;
+
+        if (shading > 0) {
+          const ndx = (xx + ox - cx) / r;
+          const ndy = (yy + oy - cy) / r;
+          const dir = -(ndx * dxl + ndy * dyl); // +1 far side, -1 lit side
+          if (dir > 0) deepen += dir * shading;
+          else dilute += -dir * shading * 0.85;
+        }
+
+        if (mottle > 0) {
+          // Two scales of noise → organic clouds rather than a single smooth
+          // blob: a broad pooling field plus a medium-frequency break-up.
+          const nc = fbm((xx + ox) * mscale, (yy + oy) * mscale, seed + 23, 4);
+          const nc2 = fbm((xx + ox) * mscale * 2.9, (yy + oy) * mscale * 2.9, seed + 41, 3);
+          const s = ((nc * 0.62 + nc2 * 0.38) - 0.5) * 2 * mottle; // signed pooling
+          if (s > 0) deepen += s;
+          else dilute += -s;
+        }
+
+        if (deepen > 0) {
+          if (deepen > 1) deepen = 1;
+          dt[i] = clamp255(dt[i] + (deepR - dt[i]) * deepen);
+          dt[i + 1] = clamp255(dt[i + 1] + (deepG - dt[i + 1]) * deepen);
+          dt[i + 2] = clamp255(dt[i + 2] + (deepB - dt[i + 2]) * deepen);
+          // Pooled pigment is also more OPAQUE, so less paper shows through and
+          // the deepened tone actually reads dark in the final composite.
+          dt[i + 3] = clamp255(dt[i + 3] + (255 - dt[i + 3]) * deepen * 0.7);
+        }
+        if (dilute > 0) {
+          const t = dilute * 0.6; // lift toward white → thinner, lighter wash
+          dt[i] = clamp255(dt[i] + (255 - dt[i]) * t);
+          dt[i + 1] = clamp255(dt[i + 1] + (255 - dt[i + 1]) * t);
+          dt[i + 2] = clamp255(dt[i + 2] + (255 - dt[i + 2]) * t);
+          dt[i + 3] = dt[i + 3] * (1 - dilute * 0.2); // thinner → paper shows
+        }
       }
     }
     octx.putImageData(im, 0, 0);
-  }
-
-  // --- 3. Directional shading: brighten toward the light, darken away from it.
-  // `source-atop` confines the gradients to existing pigment.
-  if (shading > 0) {
-    const hX = cx - ox + Math.cos(lightAngle) * r * 0.45;
-    const hY = cy - oy + Math.sin(lightAngle) * r * 0.45;
-    octx.globalCompositeOperation = 'source-atop';
-
-    // Shadow: smooth value gradient deepening away from the light → 3D form.
-    const dr = (br * 0.4) | 0;
-    const dg = (bg * 0.4) | 0;
-    const db = (bb * 0.4) | 0;
-    const shadow = octx.createRadialGradient(hX, hY, r * 0.15, hX, hY, r * 2.1);
-    shadow.addColorStop(0, `rgba(${dr},${dg},${db},0)`);
-    shadow.addColorStop(0.35, `rgba(${dr},${dg},${db},0)`);
-    shadow.addColorStop(1, `rgba(${dr},${dg},${db},${0.62 * shading})`);
-    octx.fillStyle = shadow;
-    octx.fillRect(0, 0, w, h);
-
-    // Highlight: a soft luminous hot-spot toward the light, where paper shows.
-    const hl = octx.createRadialGradient(hX, hY, 0, hX, hY, r * 0.8);
-    hl.addColorStop(0, `rgba(255,251,244,${0.62 * shading})`);
-    hl.addColorStop(0.5, `rgba(255,251,244,${0.16 * shading})`);
-    hl.addColorStop(1, 'rgba(255,251,244,0)');
-    octx.fillStyle = hl;
-    octx.fillRect(0, 0, w, h);
-
-    octx.globalCompositeOperation = 'source-over';
   }
 
   // --- 4. Optional tight hand-drawn ink boundary, on top of everything.

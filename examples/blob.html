@@ -101,6 +101,10 @@
         <input id="granulation" type="range" min="0" max="0.8" step="0.02" />
       </div>
       <div class="row">
+        <label>mottle (pooling) <output id="mottle-v"></output></label>
+        <input id="mottle" type="range" min="0" max="1" step="0.05" />
+      </div>
+      <div class="row">
         <label>shading (depth) <output id="shading-v"></output></label>
         <input id="shading" type="range" min="0" max="1.2" step="0.05" />
       </div>
@@ -133,26 +137,27 @@
       const ctx = canvas.getContext('2d');
       // Coral first, to compare against the watercolor reference, then the
       // vivid palette.
-      const CORAL = '#cd7d68';
+      const CORAL = '#ff8a72';
       const swatchColors = [CORAL, ...VIVID];
       let color = CORAL;
 
       const defaults = {
         bleed: 0.05,
         wobble: 0.08,
-        blooms: 9,
+        blooms: 5,
         edgeDarkening: 1,
-        variegation: 0.09,
-        granulation: 0.35,
-        shading: 0.7,
-        layers: 28,
+        variegation: 0.1,
+        granulation: 0.18,
+        mottle: 0.45,
+        shading: 1,
+        layers: 22,
         intensity: 1,
         seed: 7,
         texture: true,
         outline: false,
       };
 
-      const sliderKeys = ['bleed', 'wobble', 'blooms', 'edgeDarkening', 'variegation', 'granulation', 'shading', 'layers', 'intensity', 'seed'];
+      const sliderKeys = ['bleed', 'wobble', 'blooms', 'edgeDarkening', 'variegation', 'granulation', 'mottle', 'shading', 'layers', 'intensity', 'seed'];
       const inputs = {};
       for (const key of sliderKeys) {
         inputs[key] = document.getElementById(key);
@@ -190,6 +195,7 @@
           edgeDarkening: +inputs.edgeDarkening.value,
           variegation: +inputs.variegation.value,
           granulation: +inputs.granulation.value,
+          mottle: +inputs.mottle.value,
           shading: +inputs.shading.value,
           layers: +inputs.layers.value,
           intensity: +inputs.intensity.value,

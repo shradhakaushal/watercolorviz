@@ -7,9 +7,19 @@
   "scripts": {
     "dev": "./scripts/dev.sh"
   },
-  "keywords": ["dataviz", "watercolor", "charts", "canvas", "d3"],
+  "keywords": [
+    "dataviz",
+    "watercolor",
+    "charts",
+    "canvas",
+    "d3"
+  ],
   "license": "MIT",
   "peerDependencies": {
+    "d3": "^7"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.3",
     "d3": "^7"
   }
 }
