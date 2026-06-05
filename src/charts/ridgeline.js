@@ -24,14 +24,21 @@ export class Ridgeline extends Chart {
     const maxV = d3.max(series.flat());
     const colors = config.colors || series.map((_, i) => colorAt(i));
 
+    const extend = { x0: plot.x0, x1: plot.x1, ov: 18 };
+    const tops = [];
     // Back-to-front: top row first so each lower row paints over the one above.
-    for (let r = 0; r < rows; r++) {
-      const baseY = plot.y0 + (r + 1) * rowGap;
-      const top = xs.map((xv, i) => [plot.x0 + x(xv), baseY - (series[r][i] / maxV) * amp]);
-      paintAreaWash(ctx, top, baseY, { color: colors[r], seed: seed + r * 17, intensity: 0.9 });
-      inkPath(ctx, top, { seed: seed + r * 17, width: 1.7, opacity: 0.7 });
-      this.text(labels[r], plot.x0 - 8, baseY - 4, { size: 13, align: 'right' });
-    }
+    // Clipped to the plot so the sides/baseline stay clean despite edge wobble.
+    this.withPlotClip(() => {
+      for (let r = 0; r < rows; r++) {
+        const baseY = plot.y0 + (r + 1) * rowGap;
+        const top = xs.map((xv, i) => [plot.x0 + x(xv), baseY - (series[r][i] / maxV) * amp]);
+        tops.push({ top, baseY });
+        paintAreaWash(ctx, top, baseY, { color: colors[r], seed: seed + r * 17, intensity: 0.9, extend });
+        inkPath(ctx, top, { seed: seed + r * 17, width: 1.7, opacity: 0.7 });
+      }
+    });
+    // Row labels (left of the axis, so outside the clip).
+    tops.forEach(({ baseY }, r) => this.text(labels[r], plot.x0 - 8, baseY - 4, { size: 13, align: 'right' }));
 
     // x ticks along the bottom baseline.
     for (const t of x.ticks(6)) {

@@ -52,16 +52,44 @@ function densify(points, maxSeg = 12) {
   return out;
 }
 
-// Close a top curve down to a horizontal baseline into a filled polygon.
-export function areaPolygon(top, baselineY) {
-  const pts = top.slice();
-  pts.push([top[top.length - 1][0], baselineY]);
-  pts.push([top[0][0], baselineY]);
-  return densify(pts);
+// Close a top curve down to a baseline into a filled polygon.
+//
+// With `extend = { x0, x1, ov }`, the SIDES and BASELINE are pushed OUTWARD
+// beyond [x0, x1] and below the baseline by `ov`. Combined with a clip to the
+// plot rect (see Chart.withPlotClip), this guarantees the wash covers all the
+// way to the axis and the left/right edges even though the engine wobbles the
+// boundary — only the top data curve stays inside the plot and organic.
+export function areaPolygon(top, baselineY, extend) {
+  if (extend) {
+    const { x0, x1, ov = 18 } = extend;
+    const yL = top[0][1];
+    const yR = top[top.length - 1][1];
+    return densify([
+      ...top,
+      [x1 + ov, yR],
+      [x1 + ov, baselineY + ov],
+      [x0 - ov, baselineY + ov],
+      [x0 - ov, yL],
+    ]);
+  }
+  return densify([...top, [top[top.length - 1][0], baselineY], [top[0][0], baselineY]]);
 }
 
-// Close a band between an upper and lower curve (both left→right).
-export function bandPolygon(top, bottom) {
+// Close a band between an upper and lower curve (both left→right). `extend`
+// pushes the sides out (and, with `bottomOv`, the lower curve down).
+export function bandPolygon(top, bottom, extend) {
+  if (extend) {
+    const { x0, x1, ov = 18, bottomOv = 0 } = extend;
+    const bot = bottomOv ? bottom.map(([x, y]) => [x, y + bottomOv]) : bottom;
+    return densify([
+      [x0 - ov, top[0][1]],
+      ...top,
+      [x1 + ov, top[top.length - 1][1]],
+      [x1 + ov, bot[bot.length - 1][1]],
+      ...bot.slice().reverse(),
+      [x0 - ov, bot[0][1]],
+    ]);
+  }
   return densify(top.concat(bottom.slice().reverse()));
 }
 
@@ -84,13 +112,13 @@ function areaFillOpts(color, seed, intensity) {
 }
 
 export function paintAreaWash(ctx, top, baselineY, opts = {}) {
-  const { color, seed = 1, intensity = 0.95 } = opts;
-  paintPolygon(ctx, areaPolygon(top, baselineY), areaFillOpts(color, seed, intensity));
+  const { color, seed = 1, intensity = 0.95, extend } = opts;
+  paintPolygon(ctx, areaPolygon(top, baselineY, extend), areaFillOpts(color, seed, intensity));
 }
 
 export function paintBandWash(ctx, top, bottom, opts = {}) {
-  const { color, seed = 1, intensity = 0.95 } = opts;
-  paintPolygon(ctx, bandPolygon(top, bottom), areaFillOpts(color, seed, intensity));
+  const { color, seed = 1, intensity = 0.95, extend } = opts;
+  paintPolygon(ctx, bandPolygon(top, bottom, extend), areaFillOpts(color, seed, intensity));
 }
 
 export function paintRectWash(ctx, x, y, w, h, opts = {}) {

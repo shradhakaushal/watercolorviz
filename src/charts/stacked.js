@@ -29,17 +29,22 @@ export class StackedArea extends Chart {
 
     // Bands are drawn bottom→top; extend each band's bottom a few px DOWN into
     // the band already painted below it, so the hand-painted edges overlap and
-    // no paper seam shows between layers.
+    // no paper seam shows between layers. Sides are pushed out + clipped so the
+    // left/right edges stay clean; the bottom band is pushed down to the axis.
     const SEAM = 4;
-    names.forEach((k, si) => {
-      const low = acc.slice();
-      const high = acc.map((v, i) => v + series[k][i]);
-      const topPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(high[i])]);
-      const botPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(low[i]) + (si > 0 ? SEAM : 0)]);
-      paintBandWash(ctx, topPts, botPts, { color: colors[si], seed: seed + si * 17, intensity: 0.95 });
-      inkPath(ctx, topPts, { seed: seed + si * 17, width: 1.5, opacity: 0.6 });
-      acc = high;
-    });
+    const ov = 18;
+    this.withPlotClip(() => {
+      names.forEach((k, si) => {
+        const low = acc.slice();
+        const high = acc.map((v, i) => v + series[k][i]);
+        const topPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(high[i])]);
+        const botPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(low[i]) + (si > 0 ? SEAM : 0)]);
+        const extend = { x0: plot.x0, x1: plot.x1, ov, bottomOv: !stream && si === 0 ? ov : 0 };
+        paintBandWash(ctx, topPts, botPts, { color: colors[si], seed: seed + si * 17, intensity: 0.95, extend });
+        inkPath(ctx, topPts, { seed: seed + si * 17, width: 1.5, opacity: 0.6 });
+        acc = high;
+      });
+    }, { bottom: !stream });
 
     if (config.legend !== false) {
       names.forEach((k, si) => {

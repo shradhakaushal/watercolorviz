@@ -31,7 +31,10 @@ export class Area extends Chart {
 
     const top = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(ys[i])]);
     const color = config.color || colorAt(0);
-    paintAreaWash(ctx, top, plot.y1, { color, seed, intensity: config.intensity ?? 0.95 });
+    const extend = { x0: plot.x0, x1: plot.x1, ov: 18 };
+    this.withPlotClip(() => {
+      paintAreaWash(ctx, top, plot.y1, { color, seed, intensity: config.intensity ?? 0.95, extend });
+    });
     inkPath(ctx, top, { seed, width: 1.9 });
 
     for (const t of y.ticks(5)) {
