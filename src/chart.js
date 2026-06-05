@@ -106,6 +106,22 @@ export class Chart {
     if (config.xLabel) this.text(config.xLabel, plot.x0 + plot.w / 2, this.height - 8, { size: 14 });
   }
 
+  // Run `fn` with the canvas clipped to the plot's horizontal extent and (by
+  // default) its bottom baseline, leaving the top open. Area/band charts paint
+  // their fills here: the fill polygon is pushed OUTWARD past these edges, so
+  // the clip yields a clean fill right up to the axis/edges with no white gaps.
+  withPlotClip(fn, { bottom = true } = {}) {
+    const { ctx, plot } = this;
+    ctx.save();
+    ctx.beginPath();
+    const yTop = -100000;
+    const yBot = bottom ? plot.y1 : 100000;
+    ctx.rect(plot.x0, yTop, plot.w, yBot - yTop);
+    ctx.clip();
+    fn();
+    ctx.restore();
+  }
+
   // Subclasses override.
   render() {}
 }

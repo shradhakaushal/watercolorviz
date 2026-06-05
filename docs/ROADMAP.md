@@ -43,14 +43,20 @@ watercolor fill (`src/charts/shapes.js`), tuned against the painted reference. D
 
 ---
 
-## Phase 2 — Primitive B: arbitrary filled polygons (the sweet spot)
+## Phase 2 — Primitive B: arbitrary filled polygons (the sweet spot) ✅ DONE
 **Goal:** the "wow" visualizations.
 
-- [ ] **Area** (`d3-shape` area generator)
-- [ ] **Stacked area / streamgraph** (`d3-stack`)
-- [ ] **Ridgeline / joyplot**
+- [x] **Area** (`src/charts/area.js`) — grainy wash + line-and-wash ink contour.
+- [x] **Stacked area / streamgraph** (`src/charts/stacked.js`, `stream: true`).
+- [x] **Ridgeline / joyplot** (`src/charts/ridgeline.js`) — overlapping ridges.
 
-**Exit criterion:** ridgeline screenshot is good enough to headline the README.
+Engine: added `boundaryMode: 'outline'` to `paintPolygon` (perpendicular edge
+wobble that preserves an arbitrary outline instead of the radial blob boundary),
+`inkPath` for open-polyline line-and-wash strokes, and `paintAreaWash` /
+`paintBandWash` shape helpers.
+
+**Exit criterion:** MET. The ridgeline reads as a hand-painted joyplot. Demo:
+`examples/areas.html`.
 
 ---
 

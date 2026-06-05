@@ -7,6 +7,7 @@
 
 import { makeRng } from './rng.js';
 import { hexToRgb } from './palette.js';
+import { fbm } from './noise.js';
 
 export const INK = '#3b332b'; // warm dark ink, shared with the mark outline
 
@@ -43,6 +44,36 @@ export function inkLine(ctx, x1, y1, x2, y2, opts = {}) {
     else ctx.lineTo(px, py);
   }
   ctx.stroke();
+  ctx.restore();
+}
+
+// A line-and-wash ink stroke along an open polyline (`points` = [[x,y], ...]) —
+// the same fountain-pen feel as the mark outline: width swells, uneven
+// darkness, occasional lifts/gaps. Used for area tops, ridgeline ridges, and
+// (later) line charts. Pass `closed: true` to ink a full loop.
+export function inkPath(ctx, points, opts = {}) {
+  const { color = INK, width = 1.7, opacity = 0.82, seed = 1, closed = false } = opts;
+  const [r, g, b] = hexToRgb(color);
+  const n = points.length;
+  const last = closed ? n : n - 1;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < last; i++) {
+    const a = points[i];
+    const c = points[(i + 1) % n];
+    const sw = fbm(a[0] * 0.018, a[1] * 0.018, seed + 71, 3);
+    const lift = fbm(a[0] * 0.03 + 5, a[1] * 0.03 + 5, seed + 97, 2);
+    if (lift < 0.28) continue; // pen lifted → a gap
+    const w = width * (0.4 + sw * sw * 1.8);
+    const alpha = Math.min(1, opacity * (0.55 + sw * 0.7));
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]);
+    ctx.lineTo(c[0], c[1]);
+    ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+    ctx.lineWidth = w;
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

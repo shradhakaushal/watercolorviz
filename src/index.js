@@ -8,7 +8,17 @@ export { paintPaper } from './paper.js';
 export { VIVID, colorAt, hexToRgb } from './palette.js';
 export { inkLine, arrowhead, tick, INK } from './axes.js';
 export { Chart } from './chart.js';
-export { rectPoints, paintRectWash } from './charts/shapes.js';
+export {
+  rectPoints,
+  paintRectWash,
+  areaPolygon,
+  bandPolygon,
+  paintAreaWash,
+  paintBandWash,
+} from './charts/shapes.js';
 export { Bar } from './charts/bar.js';
 export { Histogram } from './charts/histogram.js';
 export { Heatmap } from './charts/heatmap.js';
+export { Area } from './charts/area.js';
+export { Ridgeline } from './charts/ridgeline.js';
+export { StackedArea } from './charts/stacked.js';
