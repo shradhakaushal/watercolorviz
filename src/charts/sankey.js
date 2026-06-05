@@ -15,7 +15,7 @@ import { paintRectWash, paintFillWash } from './shapes.js';
 
 // Sampled horizontal cubic bezier from (x0,y0) to (x1,y1) — the classic Sankey
 // S-curve (control points pulled to the horizontal midpoint).
-function ribbonEdge(x0, y0, x1, y1, segs = 22) {
+function ribbonEdge(x0, y0, x1, y1, segs = 32) {
   const cx = (x0 + x1) / 2;
   const pts = [];
   for (let i = 0; i <= segs; i++) {
@@ -71,8 +71,8 @@ export class Sankey extends Chart {
     const colTotal = columns.map((c) => c.reduce((s, i) => s + nodeValue[i], 0));
     const maxColTotal = Math.max(...colTotal);
 
-    const nodeW = config.nodeWidth || 12;
-    const pad = config.nodePadding || 20;
+    const nodeW = config.nodeWidth || 10;
+    const pad = config.nodePadding || 24;
     const tallest = columns.reduce((m, c) => Math.max(m, c.length), 1);
     const scale = (plot.h - pad * (tallest - 1)) / maxColTotal;
 
@@ -111,8 +111,8 @@ export class Sankey extends Chart {
       const color = config.linkColor || this.colorFor(l.source);
       // Low bleed → cleaner ribbon edges (a polished Sankey, not a wavy blob);
       // `soft: true` loosens the boundaries so it reads less like plumbing.
-      const flowBleed = config.flowBleed ?? (config.soft ? 0.05 : 0.018);
-      const flowIntensity = config.linkIntensity ?? (config.soft ? 0.42 : 0.52);
+      const flowBleed = config.flowBleed ?? (config.soft ? 0.05 : 0.012);
+      const flowIntensity = config.linkIntensity ?? (config.soft ? 0.42 : 0.58);
       paintFillWash(ctx, poly, { color, seed: seed + li * 7, intensity: flowIntensity, ink, bleed: flowBleed });
     });
 
