@@ -121,6 +121,16 @@ export function paintBandWash(ctx, top, bottom, opts = {}) {
   paintPolygon(ctx, bandPolygon(top, bottom, extend), areaFillOpts(color, seed, intensity));
 }
 
+// An arbitrary closed/filled polygon as a soft grainy wash (sankey flows etc.).
+export function paintFillWash(ctx, points, opts = {}) {
+  const { color, seed = 1, intensity = 0.9, ink, outline = false } = opts;
+  paintPolygon(ctx, densify(points, 14), {
+    ...areaFillOpts(color, seed, intensity),
+    outline,
+    outlineColor: ink,
+  });
+}
+
 // --- Primitive C: radial arcs (pie/donut) + Primitive D: point blobs ---
 
 // An (annular) wedge polygon: outer arc a0→a1 at r1, closed back along the
@@ -144,44 +154,45 @@ export function wedgePolygon(cx, cy, r0, r1, a0, a1, segs = 28) {
 
 // Paint a pie/donut wedge as a grainy wash with a line-and-wash ink edge.
 export function paintWedge(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
-  const { color, seed = 1, intensity = 1.0 } = opts;
+  const { color, seed = 1, intensity = 1.0, ink } = opts;
   paintPolygon(ctx, densify(wedgePolygon(cx, cy, r0, r1, a0, a1), 14), {
     color, seed, intensity,
     boundaryMode: 'outline', bleed: 0.035, shading: 0.2, mottle: 0.3,
-    granulation: 0.45, paperScale: 0.28, outline: true, outlineWidth: 1.6,
+    granulation: 0.45, paperScale: 0.28, outline: true, outlineWidth: 1.6, outlineColor: ink,
   });
 }
 
 // Paint an arbitrary CLOSED polygon as a translucent grainy wash (radar bodies).
 export function paintClosedWash(ctx, points, opts = {}) {
-  const { color, seed = 1, intensity = 0.85, outline = true } = opts;
+  const { color, seed = 1, intensity = 0.85, outline = true, ink } = opts;
   paintPolygon(ctx, densify(points, 14), {
     color, seed, intensity,
     boundaryMode: 'outline', bleed: 0.04, shading: 0.18, mottle: 0.3,
-    granulation: 0.4, paperScale: 0.28, outline, outlineWidth: 1.5,
+    granulation: 0.4, paperScale: 0.28, outline, outlineWidth: 1.5, outlineColor: ink,
   });
 }
 
 // Paint a soft grainy translucent dot/blob (scatter points, line markers,
 // network nodes).
 export function paintDot(ctx, cx, cy, r, opts = {}) {
-  const { color, seed = 1, intensity = 0.9, outline = false } = opts;
+  const { color, seed = 1, intensity = 0.9, outline = false, ink } = opts;
   paintPolygon(ctx, regularPolygon(cx, cy, r, 28), {
     color, seed, intensity,
     bleed: 0.06, shading: 0.3, mottle: 0.3, granulation: 0.35, paperScale: 0.26,
-    outline, outlineWidth: 1.3,
+    outline, outlineWidth: 1.3, outlineColor: ink,
   });
 }
 
 export function paintRectWash(ctx, x, y, w, h, opts = {}) {
-  const { color, seed = 1, outline = true, intensity = 1.1 } = opts;
+  const { color, seed = 1, outline = true, intensity = 1.1, ink } = opts;
   // Content-addressed cache key: identical geometry+color+seed reuses the paint.
-  const cacheKey = `rect:${CACHE_REV}:${Math.round(x)},${Math.round(y)},${Math.round(w)},${Math.round(h)}:${color}:${seed}:${intensity}:${outline}`;
+  const cacheKey = `rect:${CACHE_REV}:${Math.round(x)},${Math.round(y)},${Math.round(w)},${Math.round(h)}:${color}:${seed}:${intensity}:${outline}:${ink}`;
   paintPolygon(ctx, rectPoints(x, y, w, h), {
     color,
     seed,
     outline,
     intensity,
+    outlineColor: ink,
     bleed: 0.03, // keep it rectangular; just a hand-painted waver
     shading: 0.15, // a flat matte wash — NOT a glossy 3D gradient
     mottle: 0.28, // gentle cloud; let the grain (not big blotches) dominate

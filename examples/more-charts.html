@@ -34,10 +34,11 @@
       <canvas id="radar"></canvas>
       <canvas id="line"></canvas>
       <canvas id="network"></canvas>
+      <canvas id="sankey"></canvas>
     </div>
 
     <script type="module">
-      const { Scatter, Pie, Radar, Line, Network } = await import('../src/index.js');
+      const { Scatter, Pie, Radar, Line, Network, Sankey } = await import('../src/index.js');
 
       if (document.fonts && document.fonts.ready) {
         try { await document.fonts.load('22px Caveat'); await document.fonts.ready; } catch (e) {}
@@ -82,6 +83,25 @@
           links: [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [1, 2], [3, 4]],
         },
         seed: 3,
+      });
+
+      new Sankey('#sankey', {
+        title: 'Sankey',
+        width: 560,
+        height: 300,
+        data: {
+          nodes: ['Coal', 'Gas', 'Solar', 'Grid', 'Homes', 'Industry', 'Export'],
+          links: [
+            { source: 'Coal', target: 'Grid', value: 20 },
+            { source: 'Gas', target: 'Grid', value: 15 },
+            { source: 'Solar', target: 'Grid', value: 10 },
+            { source: 'Grid', target: 'Homes', value: 22 },
+            { source: 'Grid', target: 'Industry', value: 15 },
+            { source: 'Grid', target: 'Export', value: 8 },
+          ],
+        },
+        colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb', '#5fa3a0', '#cf7a6a'],
+        seed: 5,
       });
     </script>
   </body>

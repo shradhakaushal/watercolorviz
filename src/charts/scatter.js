@@ -5,13 +5,12 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { colorAt } from '../palette.js';
 import { tick } from '../axes.js';
 import { paintDot } from './shapes.js';
 
 export class Scatter extends Chart {
   render() {
-    const { ctx, plot, seed, config } = this;
+    const { ctx, plot, seed, config, ink } = this;
     const xs = config.data.x;
     const ys = config.data.y;
     const rs = config.data.r; // optional → bubble
@@ -25,12 +24,12 @@ export class Scatter extends Chart {
 
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
-      tick(ctx, plot.x0, ty, false);
+      tick(ctx, plot.x0, ty, false, { color: ink });
       this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
     for (const t of x.ticks(6)) {
       const tx = plot.x0 + x(t);
-      tick(ctx, tx, plot.y1, true);
+      tick(ctx, tx, plot.y1, true, { color: ink });
       this.text(String(t), tx, plot.y1 + 16, { size: 12 });
     }
 
@@ -38,8 +37,7 @@ export class Scatter extends Chart {
       const cx = plot.x0 + x(xv);
       const cy = plot.y0 + y(ys[i]);
       const r = rs ? rScale(rs[i]) : config.radius || 8;
-      const color = (config.colors && config.colors[i % config.colors.length]) || config.color || colorAt(i);
-      paintDot(ctx, cx, cy, r, { color, seed: seed + i * 7, intensity: 0.82, outline: r > 12 });
+      paintDot(ctx, cx, cy, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
     });
 
     this.drawAxisLines();

@@ -3,13 +3,12 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { colorAt } from '../palette.js';
 import { inkLine, inkPath } from '../axes.js';
 import { paintClosedWash } from './shapes.js';
 
 export class Radar extends Chart {
   render() {
-    const { ctx, plot, seed, config } = this;
+    const { ctx, plot, seed, config, ink } = this;
     const axes = config.data.axes;
     const series = config.data.series; // [[v,v,...], ...]
     this.paintBackground();
@@ -30,11 +29,11 @@ export class Radar extends Chart {
         const a = angle(i % n);
         ring.push([cx + Math.cos(a) * (R * k) / rings, cy + Math.sin(a) * (R * k) / rings]);
       }
-      inkPath(ctx, ring, { opacity: 0.12, width: 1, seed: seed + k, gaps: false });
+      inkPath(ctx, ring, { color: ink, opacity: 0.12, width: 1, seed: seed + k, gaps: false });
     }
     for (let i = 0; i < n; i++) {
       const a = angle(i);
-      inkLine(ctx, cx, cy, cx + Math.cos(a) * R, cy + Math.sin(a) * R, { opacity: 0.18, width: 1, jitter: 0.6, seed: seed + i });
+      inkLine(ctx, cx, cy, cx + Math.cos(a) * R, cy + Math.sin(a) * R, { color: ink, opacity: 0.18, width: 1, jitter: 0.6, seed: seed + i });
       // axis label just beyond the rim
       const lx = cx + Math.cos(a) * (R + 14);
       const ly = cy + Math.sin(a) * (R + 14);
@@ -47,8 +46,7 @@ export class Radar extends Chart {
         const a = angle(i);
         return [cx + Math.cos(a) * r(v), cy + Math.sin(a) * r(v)];
       });
-      const color = (config.colors && config.colors[s]) || colorAt(s);
-      paintClosedWash(ctx, poly, { color, seed: seed + s * 17, intensity: 0.7 });
+      paintClosedWash(ctx, poly, { color: this.colorFor(s), seed: seed + s * 17, intensity: 0.7, ink });
     });
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });

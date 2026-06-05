@@ -7,7 +7,8 @@
 // `render()`.
 
 import { paintPaper } from './paper.js';
-import { inkLine, arrowhead } from './axes.js';
+import { inkLine, arrowhead, INK } from './axes.js';
+import { colorAt } from './palette.js';
 
 export class Chart {
   constructor(el, config = {}) {
@@ -38,6 +39,10 @@ export class Chart {
     this.width = width;
     this.height = height;
     this.seed = config.seed ?? 7;
+    // Every colour is configurable. `ink` colours all outlines/axes/labels;
+    // `paper` colours the sheet; fills come from colorFor() below.
+    this.ink = config.ink || INK;
+    this.paper = config.paper; // undefined → paintPaper's default cream
     // A soft humanist/handwriting font carries half the aesthetic (spec §1.6).
     this.font = config.font || '"Caveat", "Comic Sans MS", "Segoe Print", cursive';
     this.margin = Object.assign(
@@ -60,7 +65,17 @@ export class Chart {
   }
 
   paintBackground() {
-    paintPaper(this.ctx, this.width, this.height);
+    paintPaper(this.ctx, this.width, this.height, { color: this.paper });
+  }
+
+  // Resolve the fill colour for the i-th mark. A single `color` paints every
+  // mark that colour (so picking blue gives an all-blue chart); `colors` cycles
+  // an explicit palette; otherwise the default palette cycles.
+  colorFor(i) {
+    const c = this.config;
+    if (Array.isArray(c.colors) && c.colors.length) return c.colors[i % c.colors.length];
+    if (c.color) return c.color;
+    return colorAt(i);
   }
 
   // Crisp text helper (titles, labels) in the chart's font.
@@ -69,7 +84,7 @@ export class Chart {
       size = 15,
       align = 'center',
       baseline = 'middle',
-      color = '#3b332b',
+      color = this.ink,
       opacity = 1,
     } = opts;
     const ctx = this.ctx;
@@ -86,11 +101,11 @@ export class Chart {
   // L-shaped hand-drawn ink axes with little arrowheads (x along the bottom,
   // y up the left). Shared by the rectangular-wash charts.
   drawAxisLines() {
-    const { ctx, plot, seed } = this;
-    inkLine(ctx, plot.x0, plot.y1, plot.x1 + 8, plot.y1, { seed: seed + 1 });
-    arrowhead(ctx, plot.x1 + 12, plot.y1, 1, 0);
-    inkLine(ctx, plot.x0, plot.y1, plot.x0, plot.y0 - 8, { seed: seed + 2 });
-    arrowhead(ctx, plot.x0, plot.y0 - 12, 0, -1);
+    const { ctx, plot, seed, ink } = this;
+    inkLine(ctx, plot.x0, plot.y1, plot.x1 + 8, plot.y1, { seed: seed + 1, color: ink });
+    arrowhead(ctx, plot.x1 + 12, plot.y1, 1, 0, { color: ink });
+    inkLine(ctx, plot.x0, plot.y1, plot.x0, plot.y0 - 8, { seed: seed + 2, color: ink });
+    arrowhead(ctx, plot.x0, plot.y0 - 12, 0, -1, { color: ink });
   }
 
   drawTitleAndLabels() {

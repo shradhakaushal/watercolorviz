@@ -17,6 +17,7 @@ All ride a single **watercolor fill engine** plus hand-drawn ink chrome:
 | **Radial** | pie / donut, radar / spider |
 | **Point blob** | scatter / bubble |
 | **Stroke (faked)** | line, network |
+| **Flow** | sankey |
 
 ## Usage
 
@@ -37,10 +38,18 @@ All ride a single **watercolor fill engine** plus hand-drawn ink chrome:
 ```
 
 Every chart takes a `'#selector'`/canvas/element, a `data` object, and shared options
-(`colors`, `width`, `height`, `margin`, `title`, `seed`, …). Classes:
+(`color`, `colors`, `ink`, `paper`, `width`, `height`, `margin`, `title`, `seed`, …). Classes:
 `Bar` (with `horizontal: true`), `Histogram`, `Heatmap`, `Area`, `StackedArea` (with
 `stream: true`), `Ridgeline`, `Scatter`, `Pie` (with `innerRadius` for a donut), `Radar`, `Line`,
-`Network`.
+`Network`, `Sankey`.
+
+### Colours are fully configurable
+- `color` — a single colour paints **every** mark that colour (pick blue → an all-blue chart).
+- `colors` — an explicit palette, cycled per mark/series.
+- `ink` — colour of every outline, axis, tick and label.
+- `paper` — colour of the sheet.
+
+Omit them all and a default muted palette cycles.
 
 ## Running the demos
 

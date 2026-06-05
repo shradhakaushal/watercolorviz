@@ -5,12 +5,11 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { colorAt } from '../palette.js';
 import { paintWedge } from './shapes.js';
 
 export class Pie extends Chart {
   render() {
-    const { ctx, plot, seed, config } = this;
+    const { ctx, plot, seed, config, ink } = this;
     const { labels, values } = config.data;
     this.paintBackground();
 
@@ -23,8 +22,7 @@ export class Pie extends Chart {
     let a = -Math.PI / 2; // start at 12 o'clock
     values.forEach((v, i) => {
       const a1 = a + (v / total) * Math.PI * 2;
-      const color = (config.colors && config.colors[i % config.colors.length]) || colorAt(i);
-      paintWedge(ctx, cx, cy, r0, r1, a, a1, { color, seed: seed + i * 13 });
+      paintWedge(ctx, cx, cy, r0, r1, a, a1, { color: this.colorFor(i), seed: seed + i * 13, ink });
       // label just outside the mid-angle
       const mid = (a + a1) / 2;
       const lr = r1 + 16;

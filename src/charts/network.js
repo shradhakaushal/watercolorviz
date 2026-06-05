@@ -5,13 +5,12 @@
 // in normalised [0,1] coordinates (mapped into the plot) or as pixels.
 
 import { Chart } from '../chart.js';
-import { colorAt } from '../palette.js';
 import { inkLine } from '../axes.js';
 import { paintDot } from './shapes.js';
 
 export class Network extends Chart {
   render() {
-    const { ctx, plot, seed, config } = this;
+    const { ctx, plot, seed, config, ink } = this;
     const nodes = config.data.nodes;
     const links = config.data.links || [];
     this.paintBackground();
@@ -24,13 +23,13 @@ export class Network extends Chart {
     links.forEach(([i, j], k) => {
       const a = nodes[i];
       const b = nodes[j];
-      inkLine(ctx, px(a), py(a), px(b), py(b), { opacity: 0.5, width: 1.4, jitter: 1.2, seed: seed + k });
+      inkLine(ctx, px(a), py(a), px(b), py(b), { color: config.edgeColor || ink, opacity: 0.5, width: 1.4, jitter: 1.2, seed: seed + k });
     });
 
     // Nodes.
     nodes.forEach((n, i) => {
-      const color = n.color || (config.colors && config.colors[i % config.colors.length]) || colorAt(i);
-      paintDot(ctx, px(n), py(n), n.r || config.radius || 15, { color, seed: seed + i * 11, intensity: 0.95, outline: true });
+      const color = n.color || this.colorFor(i);
+      paintDot(ctx, px(n), py(n), n.r || config.radius || 15, { color, seed: seed + i * 11, intensity: 0.95, outline: true, ink });
       if (n.label) this.text(n.label, px(n), py(n) + (n.r || 15) + 11, { size: 12 });
     });
 

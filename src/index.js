@@ -18,6 +18,7 @@ export {
   wedgePolygon,
   paintWedge,
   paintClosedWash,
+  paintFillWash,
   paintDot,
 } from './charts/shapes.js';
 export { inkPath } from './axes.js';
@@ -32,3 +33,4 @@ export { Pie } from './charts/pie.js';
 export { Radar } from './charts/radar.js';
 export { Line } from './charts/line.js';
 export { Network } from './charts/network.js';
+export { Sankey } from './charts/sankey.js';

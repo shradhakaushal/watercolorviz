@@ -83,9 +83,16 @@ edges are hand-drawn ink strokes (`inkPath`/`inkLine`) and the nodes/markers are
 
 - [x] **Line** (`src/charts/line.js`) — continuous line-and-wash stroke + markers.
 - [x] **Network** (`src/charts/network.js`) — blob nodes + ink-stroke edges.
+- [x] **Sankey** (`src/charts/sankey.js`) — flows as filled watercolor ribbons
+      (own column/stack layout, no d3-sankey dependency).
 
 Demo for the new classes: `examples/more-charts.html`. The flagship
 `examples/showcase.html` now covers all twelve forms on real demographic data.
+
+**Colours are fully configurable** (Chart base `colorFor()` + `ink`/`paper`):
+a single `color` paints every mark that colour, `colors` cycles an explicit
+palette, `ink` colours all chrome, `paper` colours the sheet — no chart hardcodes
+its colours anymore.
 
 ---
 

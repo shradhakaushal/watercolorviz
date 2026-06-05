@@ -23,7 +23,9 @@ export class Heatmap extends Chart {
     const flat = values.flat();
     const min = d3.min(flat);
     const max = d3.max(flat);
-    const color = config.color || '#3f7fb0'; // single-hue heatmap
+    // Single-hue heatmap: `color` (or first of `colors`) sets the hue; value
+    // maps to pigment density.
+    const color = config.color || (config.colors && config.colors[0]) || '#3f7fb0';
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -38,6 +40,7 @@ export class Heatmap extends Chart {
           seed: seed + r * 31 + c * 7,
           intensity,
           outline: false,
+          ink: this.ink,
         });
       }
     }
