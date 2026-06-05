@@ -71,17 +71,23 @@ export class Sankey extends Chart {
     const colTotal = columns.map((c) => c.reduce((s, i) => s + nodeValue[i], 0));
     const maxColTotal = Math.max(...colTotal);
 
-    const nodeW = config.nodeWidth || 14;
-    const pad = config.nodePadding || 14;
+    const nodeW = config.nodeWidth || 12;
+    const pad = config.nodePadding || 20;
     const tallest = columns.reduce((m, c) => Math.max(m, c.length), 1);
     const scale = (plot.h - pad * (tallest - 1)) / maxColTotal;
+
+    // Reserve horizontal room for the outside labels on the first/last columns.
+    const labelGap = config.labelSpace ?? 62;
+    const xLeft = plot.x0 + labelGap;
+    const xRight = plot.x1 - labelGap - nodeW;
+    const span = Math.max(0, xRight - xLeft);
 
     // Place each node's rectangle; columns centred vertically.
     const rect = new Array(N);
     columns.forEach((c, ci) => {
       const colH = colTotal[ci] * scale + pad * (c.length - 1);
       let y = plot.y0 + (plot.h - colH) / 2;
-      const x = plot.x0 + (ci / (maxLayer || 1)) * (plot.w - nodeW);
+      const x = xLeft + (ci / (maxLayer || 1)) * span;
       for (const i of c) {
         rect[i] = { x, y, w: nodeW, h: nodeValue[i] * scale };
         y += rect[i].h + pad;
@@ -103,18 +109,23 @@ export class Sankey extends Chart {
       const tx = t.x;
       const poly = ribbonEdge(sx, sy, tx, ty).concat(ribbonEdge(tx, ty + h, sx, sy + h));
       const color = config.linkColor || this.colorFor(l.source);
-      paintFillWash(ctx, poly, { color, seed: seed + li * 7, intensity: config.linkIntensity ?? 0.5, ink });
+      // Low bleed → cleaner ribbon edges (a polished Sankey, not a wavy blob).
+      paintFillWash(ctx, poly, { color, seed: seed + li * 7, intensity: config.linkIntensity ?? 0.52, ink, bleed: 0.018 });
     });
 
-    // Nodes + labels.
+    // Nodes + labels. Labels sit OUTSIDE the flow: left column to the left,
+    // right column to the right, interior columns above their node.
     names.forEach((name, i) => {
       const r = rect[i];
       paintRectWash(ctx, r.x, r.y, r.w, r.h, { color: this.colorFor(i), seed: seed + 100 + i, ink });
-      const onRight = layer[i] === maxLayer;
-      this.text(name, onRight ? r.x - 6 : r.x + r.w + 6, r.y + r.h / 2, {
-        size: 12,
-        align: onRight ? 'right' : 'left',
-      });
+      const cy = r.y + r.h / 2;
+      if (layer[i] === 0) {
+        this.text(name, r.x - 7, cy, { size: 12, align: 'right' });
+      } else if (layer[i] === maxLayer) {
+        this.text(name, r.x + r.w + 7, cy, { size: 12, align: 'left' });
+      } else {
+        this.text(name, r.x + r.w / 2, r.y - 9, { size: 12, align: 'center' });
+      }
     });
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });

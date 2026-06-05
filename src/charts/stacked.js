@@ -5,6 +5,7 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
+import { shades } from '../palette.js';
 import { inkPath, tick } from '../axes.js';
 import { paintBandWash } from './shapes.js';
 
@@ -24,7 +25,16 @@ export class StackedArea extends Chart {
 
     // Lower baseline per x: 0 (stacked) or centered (stream).
     let acc = xs.map((_, i) => (stream ? (maxTotal - totals[i]) / 2 : 0));
-    const colors = names.map((_, si) => this.colorFor(si));
+
+    // Colour mode: an explicit `colors` array → distinct hues with ink edges;
+    // otherwise a monochromatic dark→light RAMP of one hue with WHITE separator
+    // lines between layers — the classic streamgraph look.
+    const useRamp = !(Array.isArray(config.colors) && config.colors.length);
+    const colors = useRamp
+      ? shades(config.color || '#3f7fb0', names.length)
+      : names.map((_, si) => this.colorFor(si));
+    const sepColor = config.separator || (useRamp ? '#fdf8f0' : ink);
+    const sepOpacity = useRamp ? 0.85 : 0.6;
 
     // Bands are drawn bottom→top; extend each band's bottom a few px DOWN into
     // the band already painted below it, so the hand-painted edges overlap and
@@ -40,12 +50,12 @@ export class StackedArea extends Chart {
         const botPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(low[i]) + (si > 0 ? SEAM : 0)]);
         const extend = { x0: plot.x0, x1: plot.x1, ov, bottomOv: !stream && si === 0 ? ov : 0 };
         paintBandWash(ctx, topPts, botPts, { color: colors[si], seed: seed + si * 17, intensity: 0.95, extend });
-        inkPath(ctx, topPts, { seed: seed + si * 17, width: 1.5, opacity: 0.6, color: ink });
+        inkPath(ctx, topPts, { seed: seed + si * 17, width: 1.4, opacity: sepOpacity, color: sepColor, gaps: false });
         acc = high;
       });
     }, { bottom: !stream });
 
-    if (config.legend !== false) {
+    if (!useRamp && config.legend !== false) {
       names.forEach((k, si) => {
         const ly = plot.y0 + 6 + si * 18;
         ctx.save();

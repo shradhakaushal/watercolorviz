@@ -123,12 +123,10 @@ export function paintBandWash(ctx, top, bottom, opts = {}) {
 
 // An arbitrary closed/filled polygon as a soft grainy wash (sankey flows etc.).
 export function paintFillWash(ctx, points, opts = {}) {
-  const { color, seed = 1, intensity = 0.9, ink, outline = false } = opts;
-  paintPolygon(ctx, densify(points, 14), {
-    ...areaFillOpts(color, seed, intensity),
-    outline,
-    outlineColor: ink,
-  });
+  const { color, seed = 1, intensity = 0.9, ink, outline = false, bleed } = opts;
+  const o = { ...areaFillOpts(color, seed, intensity), outline, outlineColor: ink };
+  if (bleed != null) o.bleed = bleed; // cleaner edges for e.g. sankey ribbons
+  paintPolygon(ctx, densify(points, 14), o);
 }
 
 // --- Primitive C: radial arcs (pie/donut) + Primitive D: point blobs ---

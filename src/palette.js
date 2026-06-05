@@ -25,3 +25,20 @@ export function hexToRgb(hex) {
     parseInt(h.slice(4, 6), 16),
   ];
 }
+
+function toHex([r, g, b]) {
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+// `n` monochromatic shades of one hue, dark → light. Powers the streamgraph's
+// stacked-layer look (and any "ramp of one colour" need).
+export function shades(hex, n) {
+  const [r, g, b] = hexToRgb(hex);
+  const dark = [r * 0.58, g * 0.58, b * 0.58];
+  const light = [r + (255 - r) * 0.74, g + (255 - g) * 0.74, b + (255 - b) * 0.74];
+  return Array.from({ length: n }, (_, i) => {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    return toHex(dark.map((d, k) => d + (light[k] - d) * t));
+  });
+}
