@@ -96,6 +96,27 @@ its colours anymore.
 
 ---
 
+## Phase 6 — Honest-uncertainty & craft charts ✅ DONE
+Charts chosen for being underserved by existing libs AND genuinely improved by
+the watercolor aesthetic (see [[next-phase-chart-ideas]] in notes). All thin
+classes on the fill engine; demo `examples/uncertainty.html`.
+
+- [x] **Confidence / prediction interval** (`src/charts/interval.js`) — the
+      flagship: nested translucent bands so density fades toward the bounds, so
+      the uncertainty *looks* uncertain. Also forecast cones / posterior bands.
+- [x] **Forest plot** (`src/charts/forest.js`) — study CIs + diamond summary.
+- [x] **Likert / survey** (`src/charts/likert.js`) — diverging stacked bars whose
+      segments bleed into each other (`palette.diverging()`).
+- [x] **Calendar heatmap** (`src/charts/calendar.js`) — GitHub-style grid.
+- [x] **Chord / connectogram** (`src/charts/chord.js`) — d3.chord layout, soft
+      arcs + translucent ribbons.
+- [x] **Sparkline** (`src/charts/sparkline.js`) — tiny inline line/area.
+- [x] **Soft Sankey** — `Sankey({ soft: true })` loosens the flow boundaries.
+- [x] **Annotation layer** (`src/annotate.js`) — hand-drawn arrows / circles /
+      callouts that match the aesthetic, drawn on any chart canvas.
+
+---
+
 ## Phase 5 — Release polish
 - [ ] Demo page showcasing all 10 visualizations.
 - [ ] README with live examples + install (CDN + npm).

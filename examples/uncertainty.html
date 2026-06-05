@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — honest-uncertainty & craft charts</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" rel="stylesheet" />
+    <style>
+      body { margin: 0; background: #e9e4d8; color: #2c2a25; font-family: 'Caveat', system-ui, sans-serif; padding: 28px; }
+      h1 { font-size: 26px; margin: 0 0 16px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+      canvas { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); border-radius: 3px; background: #fbf3e7; }
+      .sparks { display: flex; flex-direction: column; gap: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — honest uncertainty &amp; craft</h1>
+    <div class="grid">
+      <canvas id="interval"></canvas>
+      <canvas id="forest"></canvas>
+      <canvas id="likert"></canvas>
+      <canvas id="calendar"></canvas>
+      <canvas id="chord"></canvas>
+      <canvas id="sankey"></canvas>
+      <canvas id="annotated"></canvas>
+      <div class="sparks">
+        <canvas id="s1"></canvas>
+        <canvas id="s2"></canvas>
+        <canvas id="s3"></canvas>
+      </div>
+    </div>
+
+    <script type="module">
+      const m = await import('../src/index.js');
+      const { Interval, Forest, Likert, Calendar, Chord, Sankey, Sparkline, Line } = m;
+      const { annotateCircle, annotateCallout } = m;
+      if (document.fonts && document.fonts.ready) { try { await document.fonts.load('22px Caveat'); await document.fonts.ready; } catch (e) {} }
+
+      let s = 5; const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+      // 1. Confidence interval — honestly blurry.
+      const xs = Array.from({ length: 40 }, (_, i) => i);
+      const ys = xs.map((i) => 40 + 18 * Math.sin(i / 6));
+      const sd = xs.map((i) => 6 + i * 0.5);
+      new Interval('#interval', { title: 'Confidence Interval', width: 480, data: { x: xs, y: ys, lo: ys.map((v, i) => v - sd[i]), hi: ys.map((v, i) => v + sd[i]) }, color: '#6f93c2', seed: 7 });
+
+      // 2. Forest plot.
+      new Forest('#forest', {
+        title: 'Meta-analysis', null: 1, width: 480,
+        data: {
+          studies: [
+            { name: 'Adams 2019', est: 0.82, lo: 0.61, hi: 1.10, weight: 12 },
+            { name: 'Boyd 2020', est: 1.05, lo: 0.88, hi: 1.25, weight: 30 },
+            { name: 'Chen 2021', est: 0.74, lo: 0.55, hi: 0.99, weight: 18 },
+            { name: 'Diaz 2022', est: 0.93, lo: 0.80, hi: 1.08, weight: 40 },
+          ],
+          summary: { est: 0.9, lo: 0.82, hi: 0.99 },
+        },
+        color: '#6f93c2', seed: 3,
+      });
+
+      // 3. Likert.
+      new Likert('#likert', {
+        title: 'Survey responses', width: 600, height: 280,
+        data: {
+          questions: ['Easy to use', 'Looks good', 'Would recommend', 'Good value'],
+          levels: ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'],
+          values: [[5, 10, 15, 40, 30], [3, 7, 10, 45, 35], [8, 12, 20, 35, 25], [10, 18, 22, 30, 20]],
+        },
+        seed: 4,
+      });
+
+      // 4. Calendar heatmap.
+      const days = [];
+      const start = new Date('2025-01-05');
+      for (let i = 0; i < 175; i++) days.push({ date: new Date(start.getTime() + i * 86400000), value: Math.max(0, rnd() * rnd() * 10) });
+      new Calendar('#calendar', { title: 'Activity', width: 560, height: 180, data: { days }, color: '#4ca85f', seed: 6 });
+
+      // 5. Chord.
+      new Chord('#chord', {
+        title: 'Flows', width: 460,
+        data: { names: ['A', 'B', 'C', 'D', 'E'], matrix: [[0, 5, 6, 4, 7], [5, 0, 5, 3, 2], [6, 5, 0, 4, 5], [4, 3, 4, 0, 6], [7, 2, 5, 6, 0]] },
+        colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb'], seed: 5,
+      });
+
+      // 6. Soft Sankey.
+      new Sankey('#sankey', {
+        title: 'Soft Sankey', soft: true, width: 480,
+        data: { nodes: ['Coal', 'Gas', 'Solar', 'Grid', 'Homes', 'Industry'], links: [
+          { source: 'Coal', target: 'Grid', value: 20 }, { source: 'Gas', target: 'Grid', value: 15 }, { source: 'Solar', target: 'Grid', value: 10 },
+          { source: 'Grid', target: 'Homes', value: 28 }, { source: 'Grid', target: 'Industry', value: 17 },
+        ] },
+        colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb', '#5fa3a0'], seed: 5,
+      });
+
+      // 7. Annotated chart.
+      new Line('#annotated', { title: 'Annotated', width: 480, data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] }, color: '#6f93c2', seed: 2 });
+      const actx = document.getElementById('annotated').getContext('2d');
+      annotateCircle(actx, 430, 78, 24, 20, { color: '#c8604f', seed: 3 });
+      annotateCallout(actx, 250, 64, 416, 80, 'new high', { color: '#c8604f', seed: 4 });
+
+      // 8. Sparklines.
+      new Sparkline('#s1', { data: { y: Array.from({ length: 24 }, () => 5 + rnd() * 10) }, color: '#dc8068' });
+      new Sparkline('#s2', { data: { y: Array.from({ length: 24 }, () => 5 + rnd() * 10) }, type: 'area', color: '#94a854' });
+      new Sparkline('#s3', { data: { y: Array.from({ length: 24 }, () => 5 + rnd() * 10) }, color: '#6f93c2' });
+    </script>
+  </body>
+</html>

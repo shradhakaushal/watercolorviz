@@ -5,8 +5,9 @@
 
 export { paintPolygon, regularPolygon, clearMarkCache } from './watercolor.js';
 export { paintPaper } from './paper.js';
-export { VIVID, colorAt, hexToRgb } from './palette.js';
+export { VIVID, colorAt, hexToRgb, shades, diverging } from './palette.js';
 export { inkLine, arrowhead, tick, INK } from './axes.js';
+export { annotateArrow, annotateCircle, annotateText, annotateCallout } from './annotate.js';
 export { Chart } from './chart.js';
 export {
   rectPoints,
@@ -34,3 +35,9 @@ export { Radar } from './charts/radar.js';
 export { Line } from './charts/line.js';
 export { Network } from './charts/network.js';
 export { Sankey } from './charts/sankey.js';
+export { Interval } from './charts/interval.js';
+export { Sparkline } from './charts/sparkline.js';
+export { Likert } from './charts/likert.js';
+export { Forest } from './charts/forest.js';
+export { Calendar } from './charts/calendar.js';
+export { Chord } from './charts/chord.js';

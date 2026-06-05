@@ -109,8 +109,11 @@ export class Sankey extends Chart {
       const tx = t.x;
       const poly = ribbonEdge(sx, sy, tx, ty).concat(ribbonEdge(tx, ty + h, sx, sy + h));
       const color = config.linkColor || this.colorFor(l.source);
-      // Low bleed → cleaner ribbon edges (a polished Sankey, not a wavy blob).
-      paintFillWash(ctx, poly, { color, seed: seed + li * 7, intensity: config.linkIntensity ?? 0.52, ink, bleed: 0.018 });
+      // Low bleed → cleaner ribbon edges (a polished Sankey, not a wavy blob);
+      // `soft: true` loosens the boundaries so it reads less like plumbing.
+      const flowBleed = config.flowBleed ?? (config.soft ? 0.05 : 0.018);
+      const flowIntensity = config.linkIntensity ?? (config.soft ? 0.42 : 0.52);
+      paintFillWash(ctx, poly, { color, seed: seed + li * 7, intensity: flowIntensity, ink, bleed: flowBleed });
     });
 
     // Nodes + labels. Labels sit OUTSIDE the flow: left column to the left,

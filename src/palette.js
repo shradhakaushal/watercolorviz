@@ -31,6 +31,18 @@ function toHex([r, g, b]) {
   return `#${c(r)}${c(g)}${c(b)}`;
 }
 
+// `n` diverging colours red → neutral → green (for Likert / sentiment).
+export function diverging(n, neg = '#c8604f', mid = '#ddc98a', pos = '#5f9e5f') {
+  const lerp = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const A = hexToRgb(neg);
+  const M = hexToRgb(mid);
+  const B = hexToRgb(pos);
+  return Array.from({ length: n }, (_, i) => {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    return toHex(t < 0.5 ? lerp(A, M, t * 2) : lerp(M, B, (t - 0.5) * 2));
+  });
+}
+
 // `n` monochromatic shades of one hue, dark → light. Powers the streamgraph's
 // stacked-layer look (and any "ramp of one colour" need).
 export function shades(hex, n) {

@@ -17,7 +17,12 @@ All ride a single **watercolor fill engine** plus hand-drawn ink chrome:
 | **Radial** | pie / donut, radar / spider |
 | **Point blob** | scatter / bubble |
 | **Stroke (faked)** | line, network |
-| **Flow** | sankey |
+| **Flow** | sankey, chord / connectogram |
+| **Honest uncertainty** | confidence/prediction interval, forest plot |
+| **Survey & craft** | likert, calendar heatmap, sparkline |
+
+Plus an **annotation layer** (`annotateArrow`, `annotateCircle`, `annotateCallout`) — hand-drawn
+arrows, circles and callouts that match the chart aesthetic, drawn on any chart's canvas.
 
 ## Usage
 
@@ -41,7 +46,8 @@ Every chart takes a `'#selector'`/canvas/element, a `data` object, and shared op
 (`color`, `colors`, `ink`, `paper`, `width`, `height`, `margin`, `title`, `seed`, …). Classes:
 `Bar` (with `horizontal: true`), `Histogram`, `Heatmap`, `Area`, `StackedArea` (with
 `stream: true`), `Ridgeline`, `Scatter`, `Pie` (with `innerRadius` for a donut), `Radar`, `Line`,
-`Network`, `Sankey`.
+`Network`, `Sankey`, `Interval` (confidence/prediction band), `Forest`, `Likert`, `Calendar`,
+`Chord`, `Sparkline`.
 
 ### Colours are fully configurable
 - `color` — a single colour paints **every** mark that colour (pick blue → an all-blue chart).
@@ -63,7 +69,8 @@ The demos load as ES modules, so they need to be served over HTTP (not opened fr
 | `examples/showcase.html` | flagship — all twelve forms on real demographic data |
 | `examples/charts.html` | bar, histogram, heatmap |
 | `examples/areas.html` | area, ridgeline, stacked area, streamgraph |
-| `examples/more-charts.html` | scatter, pie, donut, radar, line, network |
+| `examples/more-charts.html` | scatter, pie, donut, radar, line, network, sankey |
+| `examples/uncertainty.html` | CI band, forest, likert, calendar, chord, sparklines, annotations |
 | `examples/blob.html` | the paint engine, with live sliders |
 
 ## Docs
