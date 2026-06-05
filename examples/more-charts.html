@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — Phase 3 & 4 charts</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #e9e4d8;
+        color: #2c2a25;
+        font-family: 'Caveat', system-ui, sans-serif;
+        padding: 28px;
+      }
+      h1 { font-size: 26px; margin: 0 0 16px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 24px; }
+      canvas { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — scatter · pie · radar · line · network</h1>
+    <div class="grid">
+      <canvas id="scatter"></canvas>
+      <canvas id="pie"></canvas>
+      <canvas id="donut"></canvas>
+      <canvas id="radar"></canvas>
+      <canvas id="line"></canvas>
+      <canvas id="network"></canvas>
+    </div>
+
+    <script type="module">
+      const { Scatter, Pie, Radar, Line, Network } = await import('../src/index.js');
+
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.load('22px Caveat'); await document.fonts.ready; } catch (e) {}
+      }
+
+      const MUTED = ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb'];
+      let s = 11;
+      const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+      new Scatter('#scatter', {
+        title: 'Scatter / Bubble',
+        data: {
+          x: Array.from({ length: 22 }, () => rnd() * 100),
+          y: Array.from({ length: 22 }, () => rnd() * 100),
+          r: Array.from({ length: 22 }, () => rnd() * 100),
+        },
+        colors: MUTED, seed: 7,
+      });
+
+      new Pie('#pie', { title: 'Pie Chart', data: { labels: ['A', 'B', 'C', 'D', 'E'], values: [30, 22, 18, 16, 14] }, colors: MUTED, seed: 5 });
+      new Pie('#donut', { title: 'Donut', innerRadius: 0.55, data: { labels: ['A', 'B', 'C', 'D'], values: [40, 25, 20, 15] }, colors: MUTED, seed: 6 });
+
+      new Radar('#radar', {
+        title: 'Radar', max: 10,
+        data: { axes: ['Speed', 'Power', 'Range', 'Cost', 'Agility', 'Tech'], series: [[8, 6, 7, 4, 9, 5], [5, 9, 4, 7, 6, 8]] },
+        colors: ['#dc8068', '#6f93c2'], seed: 4,
+      });
+
+      new Line('#line', { title: 'Line Graph', data: { x: ['A', 'B', 'C', 'D', 'E'], y: [20, 45, 30, 55, 38] }, colors: MUTED, color: '#6f93c2', seed: 9 });
+
+      new Network('#network', {
+        title: 'Network Graph',
+        data: {
+          nodes: [
+            { x: 0.5, y: 0.5, r: 20, color: '#94a854', label: 'hub' },
+            { x: 0.5, y: 0.16, color: '#dc8068' },
+            { x: 0.82, y: 0.34, color: '#e8b94f' },
+            { x: 0.8, y: 0.74, color: '#6f93c2' },
+            { x: 0.2, y: 0.74, color: '#a07fbb' },
+            { x: 0.18, y: 0.34, color: '#5fa3a0' },
+          ],
+          links: [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [1, 2], [3, 4]],
+        },
+        seed: 3,
+      });
+    </script>
+  </body>
+</html>

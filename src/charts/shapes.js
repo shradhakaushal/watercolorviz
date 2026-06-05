@@ -3,7 +3,7 @@
 // like the painted reference: a flat matte, finely grainy, muted wash with a
 // line-and-wash ink outline.
 
-import { paintPolygon } from '../watercolor.js';
+import { paintPolygon, regularPolygon } from '../watercolor.js';
 
 // A rectangle as a closed polygon with subdivided edges, so the engine's gentle
 // edge wobble has points to act on (4 corners alone round into a blob).
@@ -119,6 +119,58 @@ export function paintAreaWash(ctx, top, baselineY, opts = {}) {
 export function paintBandWash(ctx, top, bottom, opts = {}) {
   const { color, seed = 1, intensity = 0.95, extend } = opts;
   paintPolygon(ctx, bandPolygon(top, bottom, extend), areaFillOpts(color, seed, intensity));
+}
+
+// --- Primitive C: radial arcs (pie/donut) + Primitive D: point blobs ---
+
+// An (annular) wedge polygon: outer arc a0→a1 at r1, closed back along the
+// inner arc at r0 (or to the centre when r0 = 0).
+export function wedgePolygon(cx, cy, r0, r1, a0, a1, segs = 28) {
+  const pts = [];
+  for (let i = 0; i <= segs; i++) {
+    const a = a0 + (a1 - a0) * (i / segs);
+    pts.push([cx + Math.cos(a) * r1, cy + Math.sin(a) * r1]);
+  }
+  if (r0 > 0) {
+    for (let i = segs; i >= 0; i--) {
+      const a = a0 + (a1 - a0) * (i / segs);
+      pts.push([cx + Math.cos(a) * r0, cy + Math.sin(a) * r0]);
+    }
+  } else {
+    pts.push([cx, cy]);
+  }
+  return pts;
+}
+
+// Paint a pie/donut wedge as a grainy wash with a line-and-wash ink edge.
+export function paintWedge(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
+  const { color, seed = 1, intensity = 1.0 } = opts;
+  paintPolygon(ctx, densify(wedgePolygon(cx, cy, r0, r1, a0, a1), 14), {
+    color, seed, intensity,
+    boundaryMode: 'outline', bleed: 0.035, shading: 0.2, mottle: 0.3,
+    granulation: 0.45, paperScale: 0.28, outline: true, outlineWidth: 1.6,
+  });
+}
+
+// Paint an arbitrary CLOSED polygon as a translucent grainy wash (radar bodies).
+export function paintClosedWash(ctx, points, opts = {}) {
+  const { color, seed = 1, intensity = 0.85, outline = true } = opts;
+  paintPolygon(ctx, densify(points, 14), {
+    color, seed, intensity,
+    boundaryMode: 'outline', bleed: 0.04, shading: 0.18, mottle: 0.3,
+    granulation: 0.4, paperScale: 0.28, outline, outlineWidth: 1.5,
+  });
+}
+
+// Paint a soft grainy translucent dot/blob (scatter points, line markers,
+// network nodes).
+export function paintDot(ctx, cx, cy, r, opts = {}) {
+  const { color, seed = 1, intensity = 0.9, outline = false } = opts;
+  paintPolygon(ctx, regularPolygon(cx, cy, r, 28), {
+    color, seed, intensity,
+    bleed: 0.06, shading: 0.3, mottle: 0.3, granulation: 0.35, paperScale: 0.26,
+    outline, outlineWidth: 1.3,
+  });
 }
 
 export function paintRectWash(ctx, x, y, w, h, opts = {}) {

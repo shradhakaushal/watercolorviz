@@ -21,6 +21,7 @@ echo "   Blob demo : http://localhost:${PORT}/examples/blob.html"
 echo "   Bar chart : http://localhost:${PORT}/examples/bars.html"
 echo "   Charts    : http://localhost:${PORT}/examples/charts.html"
 echo "   Areas     : http://localhost:${PORT}/examples/areas.html"
+echo "   More      : http://localhost:${PORT}/examples/more-charts.html"
 echo "   Repo root : http://localhost:${PORT}/"
 echo
 

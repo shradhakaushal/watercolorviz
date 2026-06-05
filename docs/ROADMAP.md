@@ -60,19 +60,32 @@ wobble that preserves an arbitrary outline instead of the radial blob boundary),
 
 ---
 
-## Phase 3 — Primitive D: point blobs
+## Phase 3 — Primitive D: point blobs ✅ DONE
 **Goal:** cheap reuse.
 
-- [ ] **Scatter / bubble** (size = bubble radius)
+- [x] **Scatter / bubble** (size = bubble radius, `src/charts/scatter.js`, via `paintDot`)
 
 ---
 
-## Phase 4 — Primitive C: radial arcs (the one new geometry)
+## Phase 4 — Primitive C: radial arcs (the one new geometry) ✅ DONE
 **Goal:** round out the 10.
 
-- [ ] Arc→polygon conversion in the engine.
-- [ ] **Pie / donut**
-- [ ] **Radar / spider**
+- [x] Arc→polygon conversion (`wedgePolygon` in `src/charts/shapes.js`).
+- [x] **Pie / donut** (`src/charts/pie.js`, `innerRadius` for donut)
+- [x] **Radar / spider** (`src/charts/radar.js`)
+
+---
+
+## Bonus — line & network via faked ribbon/stroke edges
+Officially deferred (need the brushstroke engine), but done now without it: the
+edges are hand-drawn ink strokes (`inkPath`/`inkLine`) and the nodes/markers are
+`paintDot` blobs — no second engine.
+
+- [x] **Line** (`src/charts/line.js`) — continuous line-and-wash stroke + markers.
+- [x] **Network** (`src/charts/network.js`) — blob nodes + ink-stroke edges.
+
+Demo for the new classes: `examples/more-charts.html`. The flagship
+`examples/showcase.html` now covers all twelve forms on real demographic data.
 
 ---
 
