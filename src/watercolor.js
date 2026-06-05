@@ -30,6 +30,17 @@ import { hexToRgb } from './palette.js';
 import { makeRng } from './rng.js';
 import { fbm } from './noise.js';
 
+// Per-mark render cache (opt-in via `opts.cacheKey`). A mark is expensive
+// (per-pixel granulation/shading), so charts pass a content-addressed key
+// (geometry + color + seed); an identical mark on a later render reuses the
+// painted offscreen canvas instead of recomputing it — "recompute only on data
+// change". Cleared wholesale if it grows large (good enough for v0).
+const _markCache = new Map();
+
+export function clearMarkCache() {
+  _markCache.clear();
+}
+
 function deform(points, depth, variance, gauss, vdiv = 2) {
   let pts = points.map((p) => [p[0], p[1]]);
   let v = variance;
@@ -153,7 +164,15 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     paperSeed = 7,
     paperScale = 0.16,
     seed = 1,
+    cacheKey = null,
   } = opts;
+
+  // Cache hit: just composite the previously-painted mark.
+  if (cacheKey && _markCache.has(cacheKey)) {
+    const c = _markCache.get(cacheKey);
+    ctx.drawImage(c.oc, c.ox, c.oy);
+    return;
+  }
 
   const rng = makeRng(seed);
   const gauss = d3.randomNormal.source(rng)(0, 1);
@@ -458,6 +477,11 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
 
   // --- 5. Composite the finished mark onto the paper.
   ctx.drawImage(oc, ox, oy);
+
+  if (cacheKey) {
+    if (_markCache.size > 1000) _markCache.clear();
+    _markCache.set(cacheKey, { oc, ox, oy });
+  }
 }
 
 // Build a regular n-gon centered at (cx, cy). Round marks use many sides; the
