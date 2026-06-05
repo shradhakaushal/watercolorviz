@@ -26,29 +26,37 @@ To view: `python3 -m http.server 8000` then open `http://localhost:8000/examples
 
 ---
 
-## Phase 1 — Primitive A: rectangular washes
+## Phase 1 — Primitive A: rectangular washes ✅ DONE
 **Goal:** first real charts; prove engine + D3 scales + crisp axes.
 
-- [ ] D3 scales/axes scaffold + canvas chart base class.
-- [ ] **Vertical bar**
-- [ ] **Horizontal bar** (axis swap)
-- [ ] **Histogram** (`d3-bin`)
-- [ ] **Heatmap** (grid of washes)
-- [ ] Crisp axis/label/tooltip layer above the fill.
-- [ ] Offscreen-canvas caching per mark; recompute only on data change.
+- [x] D3 scales/axes scaffold + canvas chart base class (`src/chart.js`, `src/axes.js`).
+- [x] **Vertical bar** (`src/charts/bar.js`)
+- [x] **Horizontal bar** (`Bar` with `horizontal: true`)
+- [x] **Histogram** (`d3-bin`, `src/charts/histogram.js`)
+- [x] **Heatmap** (grid of washes, `src/charts/heatmap.js`)
+- [x] Crisp hand-drawn ink axis/label layer above the fill. *(Hover tooltip deferred.)*
+- [x] Offscreen-canvas caching per mark (`opts.cacheKey`); recompute only on data change.
 
-**Exit criterion:** 4 charts render legibly and performantly with consistent watercolor params.
+**Exit criterion:** MET. All four charts render legibly with the shared grainy/matte/muted
+watercolor fill (`src/charts/shapes.js`), tuned against the painted reference. Demo:
+`examples/charts.html`.
 
 ---
 
-## Phase 2 — Primitive B: arbitrary filled polygons (the sweet spot)
+## Phase 2 — Primitive B: arbitrary filled polygons (the sweet spot) ✅ DONE
 **Goal:** the "wow" visualizations.
 
-- [ ] **Area** (`d3-shape` area generator)
-- [ ] **Stacked area / streamgraph** (`d3-stack`)
-- [ ] **Ridgeline / joyplot**
+- [x] **Area** (`src/charts/area.js`) — grainy wash + line-and-wash ink contour.
+- [x] **Stacked area / streamgraph** (`src/charts/stacked.js`, `stream: true`).
+- [x] **Ridgeline / joyplot** (`src/charts/ridgeline.js`) — overlapping ridges.
 
-**Exit criterion:** ridgeline screenshot is good enough to headline the README.
+Engine: added `boundaryMode: 'outline'` to `paintPolygon` (perpendicular edge
+wobble that preserves an arbitrary outline instead of the radial blob boundary),
+`inkPath` for open-polyline line-and-wash strokes, and `paintAreaWash` /
+`paintBandWash` shape helpers.
+
+**Exit criterion:** MET. The ridgeline reads as a hand-painted joyplot. Demo:
+`examples/areas.html`.
 
 ---
 

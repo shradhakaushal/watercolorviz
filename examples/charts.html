@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — Phase 1 charts</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #e9e4d8;
+        color: #2c2a25;
+        font-family: 'Caveat', system-ui, sans-serif;
+        padding: 28px;
+      }
+      h1 {
+        font-size: 26px;
+        margin: 0 0 16px;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+      }
+      canvas {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — Phase 1 (rectangular washes)</h1>
+    <div class="grid">
+      <canvas id="bar"></canvas>
+      <canvas id="hbar"></canvas>
+      <canvas id="histo"></canvas>
+      <canvas id="heat"></canvas>
+    </div>
+
+    <script type="module">
+      const { Bar, Histogram, Heatmap } = await import('../src/index.js');
+
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.load('22px Caveat');
+          await document.fonts.ready;
+        } catch (e) {
+          /* fall back to system font */
+        }
+      }
+
+      // Muted watercolor palette matching the painted reference.
+      const MUTED = ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb'];
+      const cats = { labels: ['A', 'B', 'C', 'D', 'E'], values: [30, 55, 42, 38, 18] };
+
+      new Bar('#bar', { title: 'Bar Chart', data: cats, colors: MUTED, yLabel: 'value', seed: 7 });
+
+      new Bar('#hbar', { title: 'Horizontal Bar', horizontal: true, data: cats, colors: MUTED, seed: 7 });
+
+      // Histogram from ~normal samples.
+      let s = 9;
+      const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const samples = Array.from({ length: 400 }, () => ((rnd() + rnd() + rnd()) / 3) * 100);
+      new Histogram('#histo', { title: 'Histogram', data: { values: samples }, bins: 9, colors: MUTED, seed: 4 });
+
+      new Heatmap('#heat', {
+        title: 'Heatmap',
+        data: {
+          xLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+          yLabels: ['AM', 'Noon', 'PM'],
+          values: [
+            [2, 5, 8, 6, 3],
+            [7, 9, 12, 10, 8],
+            [4, 6, 5, 9, 11],
+          ],
+        },
+        color: '#3f7fb0',
+        seed: 5,
+      });
+    </script>
+  </body>
+</html>
