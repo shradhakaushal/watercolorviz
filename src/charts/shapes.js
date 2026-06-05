@@ -30,17 +30,39 @@ const CACHE_REV = 1;
 
 // --- Primitive B: arbitrary filled polygons (area / ridgeline / stacked) ---
 
+// Insert points along any edge longer than `maxSeg` so the closed polygon has
+// no long segments. The engine's corner-smoothing cuts a FRACTION off each edge
+// end, so a single long edge (e.g. the baseline of an area) would get a huge
+// chunk sliced off its corners — leaving white wedges. Densifying keeps every
+// cut tiny and local.
+function densify(points, maxSeg = 12) {
+  const out = [];
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % n];
+    out.push(a);
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const k = Math.floor(d / maxSeg);
+    for (let j = 1; j <= k; j++) {
+      const t = j / (k + 1);
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+  return out;
+}
+
 // Close a top curve down to a horizontal baseline into a filled polygon.
 export function areaPolygon(top, baselineY) {
   const pts = top.slice();
   pts.push([top[top.length - 1][0], baselineY]);
   pts.push([top[0][0], baselineY]);
-  return pts;
+  return densify(pts);
 }
 
 // Close a band between an upper and lower curve (both left→right).
 export function bandPolygon(top, bottom) {
-  return top.concat(bottom.slice().reverse());
+  return densify(top.concat(bottom.slice().reverse()));
 }
 
 // The arbitrary-polygon wash recipe (area/ridgeline/stacked): a soft, grainy,
