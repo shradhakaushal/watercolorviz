@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — Phase 2 area charts</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #e9e4d8;
+        color: #2c2a25;
+        font-family: 'Caveat', system-ui, sans-serif;
+        padding: 28px;
+      }
+      h1 { font-size: 26px; margin: 0 0 16px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 24px; }
+      canvas { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — Phase 2 (arbitrary filled polygons)</h1>
+    <div class="grid">
+      <canvas id="ridge"></canvas>
+      <canvas id="area"></canvas>
+      <canvas id="stacked"></canvas>
+      <canvas id="stream"></canvas>
+    </div>
+
+    <script type="module">
+      const { Area, Ridgeline, StackedArea } = await import('../src/index.js');
+
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.load('22px Caveat');
+          await document.fonts.ready;
+        } catch (e) {
+          /* fall back */
+        }
+      }
+
+      const MUTED = ['#dc8068', '#e8b94f', '#94a854', '#5fa3a0', '#6f93c2'];
+
+      // Ridgeline (headline).
+      const rx = Array.from({ length: 50 }, (_, i) => i);
+      const gauss = (c, w) => rx.map((i) => Math.exp(-((i - c) ** 2) / (2 * w * w)));
+      const series = [gauss(12, 6), gauss(20, 7), gauss(28, 5), gauss(34, 8), gauss(40, 6)].map(
+        (s, k) => s.map((v) => v * (0.7 + 0.3 * Math.sin(k))),
+      );
+      new Ridgeline('#ridge', {
+        title: 'Ridgeline',
+        data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], x: rx, series },
+        colors: MUTED,
+        seed: 3,
+        height: 360,
+      });
+
+      // Area.
+      const ax = Array.from({ length: 24 }, (_, i) => i);
+      const ay = ax.map((i) => 30 + 22 * Math.sin(i / 3.2) + 10 * Math.sin(i / 1.3) + 14);
+      new Area('#area', { title: 'Area', data: { x: ax, y: ay }, color: '#6f93c2', seed: 7 });
+
+      // Stacked area + streamgraph.
+      const sx = Array.from({ length: 30 }, (_, i) => i);
+      const wave = (c, w, a) => sx.map((i) => a * Math.exp(-((i - c) ** 2) / (2 * w * w)) + a * 0.15);
+      const sData = {
+        x: sx,
+        series: { Alpha: wave(8, 7, 20), Beta: wave(16, 6, 26), Gamma: wave(20, 9, 18), Delta: wave(24, 6, 22) },
+      };
+      new StackedArea('#stacked', { title: 'Stacked Area', data: sData, colors: MUTED, seed: 2 });
+      new StackedArea('#stream', { title: 'Streamgraph', stream: true, data: sData, colors: MUTED, seed: 2 });
+    </script>
+  </body>
+</html>

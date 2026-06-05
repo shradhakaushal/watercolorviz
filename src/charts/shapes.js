@@ -28,6 +28,49 @@ export function rectPoints(x, y, w, h, per = 5) {
 // cached marks are not reused.
 const CACHE_REV = 1;
 
+// --- Primitive B: arbitrary filled polygons (area / ridgeline / stacked) ---
+
+// Close a top curve down to a horizontal baseline into a filled polygon.
+export function areaPolygon(top, baselineY) {
+  const pts = top.slice();
+  pts.push([top[top.length - 1][0], baselineY]);
+  pts.push([top[0][0], baselineY]);
+  return pts;
+}
+
+// Close a band between an upper and lower curve (both left→right).
+export function bandPolygon(top, bottom) {
+  return top.concat(bottom.slice().reverse());
+}
+
+// The arbitrary-polygon wash recipe (area/ridgeline/stacked): a soft, grainy,
+// translucent wash that follows the given OUTLINE (flat baselines stay flat,
+// the data profile stays faithful) — not the radial blob boundary.
+function areaFillOpts(color, seed, intensity) {
+  return {
+    color,
+    seed,
+    intensity,
+    boundaryMode: 'outline',
+    bleed: 0.05, // gentle hand-painted edge along the curve
+    shading: 0.18, // nearly flat
+    mottle: 0.32,
+    granulation: 0.42,
+    paperScale: 0.28,
+    outline: false, // the chart inks the top contour itself (inkPath)
+  };
+}
+
+export function paintAreaWash(ctx, top, baselineY, opts = {}) {
+  const { color, seed = 1, intensity = 0.95 } = opts;
+  paintPolygon(ctx, areaPolygon(top, baselineY), areaFillOpts(color, seed, intensity));
+}
+
+export function paintBandWash(ctx, top, bottom, opts = {}) {
+  const { color, seed = 1, intensity = 0.95 } = opts;
+  paintPolygon(ctx, bandPolygon(top, bottom), areaFillOpts(color, seed, intensity));
+}
+
 export function paintRectWash(ctx, x, y, w, h, opts = {}) {
   const { color, seed = 1, outline = true, intensity = 1.1 } = opts;
   // Content-addressed cache key: identical geometry+color+seed reuses the paint.
