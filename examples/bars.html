@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — bar chart (Phase 1)</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <!-- Handwriting font carries half the aesthetic (spec §1.6). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #e9e4d8;
+        color: #2c2a25;
+        font-family: 'Caveat', system-ui, sans-serif;
+        padding: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 28px;
+        align-items: flex-start;
+      }
+      h1 {
+        width: 100%;
+        font-size: 24px;
+        margin: 0 0 4px;
+      }
+      canvas {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — bar chart</h1>
+    <canvas id="a"></canvas>
+
+    <script type="module">
+      const { Bar } = await import('../src/index.js');
+
+      // Wait for the web font so the first paint uses it (canvas text needs the
+      // font loaded before drawing).
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.load('22px Caveat');
+          await document.fonts.ready;
+        } catch (e) {
+          /* fall back to system font */
+        }
+      }
+
+      new Bar('#a', {
+        title: 'Bar Chart',
+        data: { labels: ['A', 'B', 'C', 'D', 'E'], values: [30, 55, 42, 38, 18] },
+        // Muted watercolor palette, matching the painted reference.
+        colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb'],
+        yLabel: 'value',
+        seed: 7,
+      });
+    </script>
+  </body>
+</html>
