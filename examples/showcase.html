@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz - global demography showcase</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <style>
+      :root {
+        --ink: #25221d;
+        --muted: #6c6458;
+        --paper: #ece3d4;
+        --sheet: #fbf3e7;
+        --rule: rgba(77, 68, 57, 0.2);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0)),
+          var(--paper);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(1240px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 28px 0 40px;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: end;
+        padding: 0 4px 22px;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 5vw, 58px);
+        line-height: 0.95;
+        letter-spacing: 0;
+        max-width: 760px;
+      }
+
+      .dek {
+        margin: 14px 0 0;
+        max-width: 760px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: right;
+        min-width: 220px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      figure {
+        margin: 0;
+        padding: 14px;
+        background: rgba(255, 250, 242, 0.78);
+        border: 1px solid rgba(77, 68, 57, 0.16);
+        border-radius: 8px;
+        box-shadow: 0 12px 32px rgba(64, 54, 43, 0.1);
+      }
+
+      figcaption {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 34px;
+        margin-bottom: 10px;
+      }
+
+      figcaption strong {
+        font-size: 15px;
+        font-weight: 720;
+      }
+
+      figcaption span {
+        color: var(--muted);
+        font-size: 12px;
+        text-align: right;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: var(--sheet);
+        border-radius: 4px;
+        box-shadow: inset 0 0 0 1px rgba(70, 58, 45, 0.08);
+      }
+
+      footer {
+        margin: 22px 4px 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      @media (max-width: 900px) {
+        header,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .meta {
+          text-align: left;
+        }
+
+        main {
+          width: min(100vw - 20px, 680px);
+          padding-top: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Global demography in watercolor</h1>
+          <p class="dek">
+            A compact review sheet for the polygon wash engine: ten chart forms built from local
+            demographic datasets and painted onto the same cold-press paper texture.
+          </p>
+        </div>
+        <div class="meta">
+          watercolorviz example<br />
+          data in <code>examples/data</code><br />
+          static canvas render
+        </div>
+      </header>
+
+      <section class="grid" aria-label="Watercolor chart showcase">
+        <figure>
+          <figcaption>
+            <strong>Vertical bar</strong>
+            <span>2023 population by region</span>
+          </figcaption>
+          <canvas id="vertical-bar" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Horizontal bar</strong>
+            <span>largest countries, 2023</span>
+          </figcaption>
+          <canvas id="horizontal-bar" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Histogram</strong>
+            <span>country life expectancy distribution</span>
+          </figcaption>
+          <canvas id="histogram" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Heatmap</strong>
+            <span>age structure shares, 2023</span>
+          </figcaption>
+          <canvas id="heatmap" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Area</strong>
+            <span>world population since 1950</span>
+          </figcaption>
+          <canvas id="area" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Stacked area</strong>
+            <span>regional contribution over time</span>
+          </figcaption>
+          <canvas id="stacked-area" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Ridgeline</strong>
+            <span>five-year age distributions</span>
+          </figcaption>
+          <canvas id="ridgeline" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Donut</strong>
+            <span>2023 regional population share</span>
+          </figcaption>
+          <canvas id="donut" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Radar</strong>
+            <span>population age profile</span>
+          </figcaption>
+          <canvas id="radar" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Scatter and bubble</strong>
+            <span>income, longevity, population</span>
+          </figcaption>
+          <canvas id="scatter" width="560" height="360"></canvas>
+        </figure>
+      </section>
+
+      <footer>
+        Sources: UN World Population Prospects 2024 via Our World in Data and Vega
+        gapminder-health-income. Extract notes are in <code>examples/data/SOURCES.md</code>.
+      </footer>
+    </main>
+
+    <script type="module">
+      import * as d3 from 'd3';
+      import { paintPaper } from '../src/paper.js';
+      import { colorAt, VIVID } from '../src/palette.js';
+      import { paintPolygon, regularPolygon } from '../src/watercolor.js';
+
+      const regionOrder = ['Africa', 'Asia', 'Europe', 'Americas', 'Oceania'];
+      const ageOrder = ['Under-5s', 'Ages 5-14', 'Ages 15-24', 'Ages 25-64', 'Ages 65+'];
+      const regionColor = new Map(regionOrder.map((region, index) => [region, colorAt(index)]));
+      const ink = '#29251e';
+      const muted = '#62594d';
+      const grid = 'rgba(67,58,47,0.18)';
+
+      const data = await Promise.all([
+        d3.csv('./data/global_population_regions.csv', d3.autoType),
+        d3.csv('./data/world_population_history.csv', d3.autoType),
+        d3.csv('./data/top_countries_population_2023.csv', d3.autoType),
+        d3.csv('./data/age_structure_regions_2023.csv', d3.autoType),
+        d3.csv('./data/age_distribution_regions_2023.csv', d3.autoType),
+        d3.csv('./data/country_development.csv', d3.autoType),
+      ]);
+
+      const [
+        regionPopulation,
+        worldPopulation,
+        topCountries,
+        ageStructure,
+        ageDistribution,
+        countryDevelopment,
+      ] = data;
+
+      drawVerticalBar(document.getElementById('vertical-bar'), regionPopulation);
+      drawHorizontalBar(document.getElementById('horizontal-bar'), topCountries);
+      drawHistogram(document.getElementById('histogram'), countryDevelopment);
+      drawHeatmap(document.getElementById('heatmap'), ageStructure);
+      drawArea(document.getElementById('area'), worldPopulation);
+      drawStackedArea(document.getElementById('stacked-area'), regionPopulation);
+      drawRidgeline(document.getElementById('ridgeline'), ageDistribution);
+      drawDonut(document.getElementById('donut'), regionPopulation);
+      drawRadar(document.getElementById('radar'), ageStructure);
+      drawScatter(document.getElementById('scatter'), countryDevelopment);
+
+      function chart(canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        paintPaper(ctx, canvas.width, canvas.height, { vignette: false });
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.textBaseline = 'middle';
+        return ctx;
+      }
+
+      function wc(opts = {}) {
+        return {
+          layers: 12,
+          layerOpacity: 0.038,
+          bleed: 0.035,
+          wobble: 0.055,
+          blooms: 3,
+          bloomStrength: 0.85,
+          edgeDarkening: 0.75,
+          granulation: 0.14,
+          mottle: 0.35,
+          shading: 0.55,
+          ...opts,
+        };
+      }
+
+      function rect(x0, y0, x1, y1) {
+        return [
+          [x0, y0],
+          [x1, y0],
+          [x1, y1],
+          [x0, y1],
+        ];
+      }
+
+      function line(ctx, points, color = grid, width = 1) {
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (const p of points.slice(1)) ctx.lineTo(p[0], p[1]);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+      }
+
+      function label(ctx, text, x, y, options = {}) {
+        const { size = 11, color = muted, align = 'center', baseline = 'middle', weight = 500 } = options;
+        ctx.fillStyle = color;
+        ctx.font = `${weight} ${size}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = align;
+        ctx.textBaseline = baseline;
+        ctx.fillText(text, x, y);
+      }
+
+      function yAxis(ctx, scale, x, width, ticks, format = d3.format('~s')) {
+        for (const t of scale.ticks(ticks)) {
+          const y = scale(t);
+          line(ctx, [[x, y], [x + width, y]]);
+          label(ctx, format(t), x - 8, y, { align: 'right', size: 10 });
+        }
+      }
+
+      function xAxisYears(ctx, scale, y, ticks) {
+        for (const t of ticks) {
+          const x = scale(t);
+          line(ctx, [[x, y], [x, y + 4]], 'rgba(67,58,47,0.35)');
+          label(ctx, t, x, y + 18, { size: 10 });
+        }
+      }
+
+      function drawVerticalBar(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 28, right: 22, bottom: 58, left: 62 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const latest = rows.filter((d) => d.year === 2023).sort((a, b) => regionOrder.indexOf(a.region) - regionOrder.indexOf(b.region));
+        const x = d3.scaleBand().domain(regionOrder).range([m.left, m.left + innerW]).padding(0.25);
+        const y = d3.scaleLinear().domain([0, d3.max(latest, (d) => d.population_millions)]).nice().range([m.top + innerH, m.top]);
+
+        yAxis(ctx, y, m.left, innerW, 5, (d) => `${d / 1000}B`);
+        line(ctx, [[m.left, y(0)], [m.left + innerW, y(0)]], 'rgba(67,58,47,0.45)', 1.2);
+
+        latest.forEach((d, index) => {
+          const x0 = x(d.region);
+          paintPolygon(ctx, rect(x0, y(d.population_millions), x0 + x.bandwidth(), y(0)), wc({
+            color: regionColor.get(d.region),
+            intensity: 1.15,
+            outline: true,
+            outlineOpacity: 0.35,
+            seed: 100 + index,
+          }));
+          label(ctx, d.region, x0 + x.bandwidth() / 2, y(0) + 24, { size: 10 });
+        });
+      }
+
+      function drawHorizontalBar(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 18, right: 30, bottom: 34, left: 112 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const top = rows.slice(0, 10).reverse();
+        const x = d3.scaleLinear().domain([0, d3.max(top, (d) => d.population_millions)]).nice().range([m.left, m.left + innerW]);
+        const y = d3.scaleBand().domain(top.map((d) => d.country)).range([m.top + innerH, m.top]).padding(0.28);
+
+        for (const t of x.ticks(5)) {
+          const tx = x(t);
+          line(ctx, [[tx, m.top], [tx, m.top + innerH]]);
+          label(ctx, `${t / 1000}B`, tx, m.top + innerH + 18, { size: 10 });
+        }
+
+        top.forEach((d, index) => {
+          const y0 = y(d.country);
+          paintPolygon(ctx, rect(m.left, y0, x(d.population_millions), y0 + y.bandwidth()), wc({
+            color: colorAt(index),
+            seed: 230 + index,
+            layers: 11,
+            outline: true,
+            outlineOpacity: 0.28,
+          }));
+          label(ctx, d.country, m.left - 8, y0 + y.bandwidth() / 2, { align: 'right', size: 10, color: ink });
+        });
+      }
+
+      function drawHistogram(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 26, right: 26, bottom: 44, left: 52 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const values = rows.map((d) => d.life_expectancy);
+        const x = d3.scaleLinear().domain([45, 86]).range([m.left, m.left + innerW]);
+        const bins = d3.bin().domain(x.domain()).thresholds(12)(values);
+        const y = d3.scaleLinear().domain([0, d3.max(bins, (d) => d.length)]).nice().range([m.top + innerH, m.top]);
+
+        yAxis(ctx, y, m.left, innerW, 4, d3.format('d'));
+        for (const t of x.ticks(6)) {
+          label(ctx, t, x(t), m.top + innerH + 18, { size: 10 });
+        }
+
+        bins.forEach((bin, index) => {
+          const x0 = x(bin.x0) + 2;
+          const x1 = x(bin.x1) - 2;
+          paintPolygon(ctx, rect(x0, y(bin.length), x1, y(0)), wc({
+            color: colorAt(index + 1),
+            seed: 360 + index,
+            intensity: 1.05,
+            outline: true,
+            outlineOpacity: 0.26,
+          }));
+        });
+        label(ctx, 'life expectancy at birth', m.left + innerW / 2, canvas.height - 13, { size: 10 });
+      }
+
+      function drawHeatmap(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 26, right: 22, bottom: 54, left: 92 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const x = d3.scaleBand().domain(ageOrder).range([m.left, m.left + innerW]).padding(0.08);
+        const y = d3.scaleBand().domain(regionOrder).range([m.top, m.top + innerH]).padding(0.08);
+        const color = d3.scaleSequential([0, d3.max(rows, (d) => d.share_percent)], (t) => d3.interpolateRgb('#f4c430', '#2e6fb7')(t));
+
+        rows.forEach((d, index) => {
+          const x0 = x(d.age_group);
+          const y0 = y(d.region);
+          paintPolygon(ctx, rect(x0, y0, x0 + x.bandwidth(), y0 + y.bandwidth()), wc({
+            color: d3.color(color(d.share_percent)).formatHex(),
+            seed: 430 + index,
+            layers: 8,
+            layerOpacity: 0.043,
+            bleed: 0.025,
+            blooms: 2,
+            intensity: 1.05,
+          }));
+          label(ctx, `${d.share_percent}%`, x0 + x.bandwidth() / 2, y0 + y.bandwidth() / 2, { color: ink, size: 10, weight: 650 });
+        });
+
+        regionOrder.forEach((region) => label(ctx, region, m.left - 10, y(region) + y.bandwidth() / 2, { align: 'right', size: 10, color: ink }));
+        ageOrder.forEach((age) => label(ctx, age.replace('Ages ', '').replace('Under-', '<'), x(age) + x.bandwidth() / 2, m.top + innerH + 20, { size: 10 }));
+      }
+
+      function drawArea(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 26, right: 26, bottom: 44, left: 58 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const x = d3.scaleLinear().domain(d3.extent(rows, (d) => d.year)).range([m.left, m.left + innerW]);
+        const y = d3.scaleLinear().domain([0, d3.max(rows, (d) => d.population_billions)]).nice().range([m.top + innerH, m.top]);
+        const top = rows.map((d) => [x(d.year), y(d.population_billions)]);
+        const base = rows.slice().reverse().map((d) => [x(d.year), y(0)]);
+
+        yAxis(ctx, y, m.left, innerW, 5, (d) => `${d}B`);
+        paintPolygon(ctx, [...top, ...base], wc({
+          color: VIVID[0],
+          seed: 510,
+          layers: 16,
+          layerOpacity: 0.033,
+          bleed: 0.02,
+          intensity: 1.2,
+          outline: true,
+          outlineOpacity: 0.32,
+        }));
+        line(ctx, [[m.left, y(0)], [m.left + innerW, y(0)]], 'rgba(67,58,47,0.45)');
+        xAxisYears(ctx, x, y(0), [1950, 1970, 1990, 2010, 2023]);
+      }
+
+      function drawStackedArea(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 26, right: 24, bottom: 48, left: 58 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const years = Array.from(new Set(rows.map((d) => d.year))).sort((a, b) => a - b);
+        const wide = years.map((year) => {
+          const out = { year };
+          for (const r of regionOrder) out[r] = rows.find((d) => d.year === year && d.region === r)?.population_millions || 0;
+          return out;
+        });
+        const stack = d3.stack().keys(regionOrder)(wide);
+        const x = d3.scaleLinear().domain(d3.extent(years)).range([m.left, m.left + innerW]);
+        const y = d3.scaleLinear().domain([0, d3.max(stack.at(-1), (d) => d[1])]).nice().range([m.top + innerH, m.top]);
+
+        yAxis(ctx, y, m.left, innerW, 4, (d) => `${d / 1000}B`);
+        stack.forEach((series, index) => {
+          const top = series.map((d) => [x(d.data.year), y(d[1])]);
+          const bottom = series.slice().reverse().map((d) => [x(d.data.year), y(d[0])]);
+          paintPolygon(ctx, [...top, ...bottom], wc({
+            color: regionColor.get(series.key),
+            seed: 610 + index * 9,
+            layers: 12,
+            layerOpacity: 0.034,
+            bleed: 0.018,
+            intensity: 1.1,
+            outline: true,
+            outlineOpacity: 0.24,
+          }));
+        });
+        xAxisYears(ctx, x, y(0), [1950, 1970, 1990, 2010, 2023]);
+        drawLegend(ctx, regionOrder, 376, 42);
+      }
+
+      function drawRidgeline(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 24, right: 26, bottom: 44, left: 78 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const ages = Array.from(new Set(rows.map((d) => d.age_group)));
+        const x = d3.scalePoint().domain(ages).range([m.left, m.left + innerW]).padding(0.2);
+        const rowY = d3.scalePoint().domain(regionOrder).range([m.top + 42, m.top + innerH - 16]);
+        const yAmp = d3.scaleLinear().domain([0, d3.max(rows, (d) => d.share_percent)]).range([0, 64]);
+
+        regionOrder.forEach((region, index) => {
+          const baseY = rowY(region);
+          const series = rows.filter((d) => d.region === region);
+          line(ctx, [[m.left, baseY], [m.left + innerW, baseY]], 'rgba(67,58,47,0.16)');
+          const top = series.map((d) => [x(d.age_group), baseY - yAmp(d.share_percent)]);
+          const shape = [[x(ages[0]), baseY], ...top, [x(ages.at(-1)), baseY]];
+          paintPolygon(ctx, shape, wc({
+            color: regionColor.get(region),
+            seed: 720 + index * 11,
+            layers: 13,
+            layerOpacity: 0.036,
+            bleed: 0.022,
+            intensity: 1.05,
+            outline: true,
+            outlineOpacity: 0.25,
+          }));
+          label(ctx, region, m.left - 10, baseY - 10, { align: 'right', size: 10, color: ink });
+        });
+
+        ['0-4', '20-24', '40-44', '60-64', '80-84', '100+'].forEach((age) => {
+          label(ctx, age, x(age), m.top + innerH + 20, { size: 10 });
+        });
+      }
+
+      function drawDonut(canvas, rows) {
+        const ctx = chart(canvas);
+        const latest = rows.filter((d) => d.year === 2023).sort((a, b) => regionOrder.indexOf(a.region) - regionOrder.indexOf(b.region));
+        const total = d3.sum(latest, (d) => d.population_millions);
+        const cx = 238;
+        const cy = 178;
+        const outer = 118;
+        const inner = 55;
+        const pie = d3.pie().sort(null).value((d) => d.population_millions)(latest);
+
+        pie.forEach((arc, index) => {
+          paintPolygon(ctx, arcPolygon(cx, cy, inner, outer, arc.startAngle - Math.PI / 2, arc.endAngle - Math.PI / 2), wc({
+            color: regionColor.get(arc.data.region),
+            seed: 830 + index,
+            layers: 15,
+            layerOpacity: 0.034,
+            bleed: 0.02,
+            intensity: 1.12,
+            outline: true,
+            outlineOpacity: 0.34,
+          }));
+        });
+        label(ctx, `${(total / 1000).toFixed(2)}B`, cx, cy - 8, { size: 28, color: ink, weight: 760 });
+        label(ctx, 'people', cx, cy + 22, { size: 12 });
+        drawLegend(ctx, latest.map((d) => d.region), 382, 94);
+      }
+
+      function arcPolygon(cx, cy, inner, outer, start, end) {
+        const steps = Math.max(10, Math.ceil(Math.abs(end - start) * 36));
+        const pts = [];
+        for (let i = 0; i <= steps; i++) {
+          const a = start + (end - start) * (i / steps);
+          pts.push([cx + Math.cos(a) * outer, cy + Math.sin(a) * outer]);
+        }
+        for (let i = steps; i >= 0; i--) {
+          const a = start + (end - start) * (i / steps);
+          pts.push([cx + Math.cos(a) * inner, cy + Math.sin(a) * inner]);
+        }
+        return pts;
+      }
+
+      function drawRadar(canvas, rows) {
+        const ctx = chart(canvas);
+        const cx = 286;
+        const cy = 178;
+        const radius = 114;
+        const selected = ['Africa', 'Europe', 'Americas'];
+        const max = d3.max(rows, (d) => d.share_percent);
+        const angle = (age) => Math.PI * -0.5 + (ageOrder.indexOf(age) / ageOrder.length) * Math.PI * 2;
+        const r = d3.scaleLinear().domain([0, max]).range([0, radius]);
+
+        for (const ring of [0.25, 0.5, 0.75, 1]) {
+          const points = ageOrder.map((age) => polar(cx, cy, angle(age), radius * ring));
+          line(ctx, [...points, points[0]], 'rgba(67,58,47,0.18)');
+        }
+        ageOrder.forEach((age) => {
+          const p = polar(cx, cy, angle(age), radius + 24);
+          const axisEnd = polar(cx, cy, angle(age), radius);
+          line(ctx, [[cx, cy], axisEnd], 'rgba(67,58,47,0.16)');
+          label(ctx, age.replace('Ages ', '').replace('Under-', '<'), p[0], p[1], { size: 10 });
+        });
+
+        selected.forEach((region, index) => {
+          const values = new Map(rows.filter((d) => d.region === region).map((d) => [d.age_group, d.share_percent]));
+          const points = ageOrder.map((age) => polar(cx, cy, angle(age), r(values.get(age))));
+          paintPolygon(ctx, points, wc({
+            color: regionColor.get(region),
+            seed: 930 + index * 17,
+            layers: 10,
+            layerOpacity: 0.03,
+            bleed: 0.028,
+            intensity: 0.9,
+            outline: true,
+            outlineOpacity: 0.55,
+          }));
+        });
+        drawLegend(ctx, selected, 36, 64);
+      }
+
+      function polar(cx, cy, angle, radius) {
+        return [cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius];
+      }
+
+      function drawScatter(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 24, right: 28, bottom: 54, left: 58 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const sample = rows.filter((d) => d.population_millions >= 3).sort((a, b) => a.population_millions - b.population_millions);
+        const x = d3.scaleLog().domain([500, 90000]).range([m.left, m.left + innerW]);
+        const y = d3.scaleLinear().domain([48, 86]).range([m.top + innerH, m.top]);
+        const radius = d3.scaleSqrt().domain(d3.extent(sample, (d) => d.population_millions)).range([3, 16]);
+        const regionIndex = new Map(Array.from(new Set(rows.map((d) => d.region))).sort().map((region, index) => [region, index]));
+
+        for (const t of [1000, 3000, 10000, 30000, 90000]) {
+          line(ctx, [[x(t), m.top], [x(t), m.top + innerH]]);
+          label(ctx, d3.format('~s')(t), x(t), m.top + innerH + 18, { size: 10 });
+        }
+        yAxis(ctx, y, m.left, innerW, 5, d3.format('d'));
+
+        sample.forEach((d, index) => {
+          const color = colorAt(regionIndex.get(d.region));
+          paintPolygon(ctx, regularPolygon(x(d.income_ppp), y(d.life_expectancy), radius(d.population_millions), 10), wc({
+            color,
+            seed: 1040 + index,
+            layers: 7,
+            layerOpacity: 0.035,
+            bleed: 0.04,
+            blooms: 1,
+            edgeDarkening: 0.5,
+            intensity: 0.95,
+          }));
+        });
+
+        for (const country of ['India', 'China', 'United States']) {
+          const d = rows.find((row) => row.country === country);
+          if (!d) continue;
+          label(ctx, country, x(d.income_ppp) + 8, y(d.life_expectancy) - 12, { align: 'left', size: 10, color: ink, weight: 680 });
+        }
+        label(ctx, 'income per person, PPP', m.left + innerW / 2, canvas.height - 13, { size: 10 });
+        label(ctx, 'life expectancy', 18, 24, { align: 'left', size: 10 });
+      }
+
+      function drawLegend(ctx, labels, x, y) {
+        labels.forEach((name, index) => {
+          const color = regionColor.get(name) || colorAt(index);
+          paintPolygon(ctx, regularPolygon(x, y + index * 22, 6, 8), wc({
+            color,
+            seed: 1200 + index,
+            layers: 5,
+            layerOpacity: 0.045,
+            blooms: 1,
+            edgeDarkening: 0.4,
+            granulation: 0.08,
+          }));
+          label(ctx, name, x + 15, y + index * 22, { align: 'left', size: 10, color: ink });
+        });
+      }
+    </script>
+  </body>
+</html>
