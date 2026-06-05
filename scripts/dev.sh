@@ -16,6 +16,7 @@ PORT="${CONDUCTOR_PORT:-8000}"
 cd "$(dirname "$0")/.."
 
 echo "🎨 watercolorviz dev server"
+echo "   Showcase  : http://localhost:${PORT}/examples/showcase.html"
 echo "   Blob demo : http://localhost:${PORT}/examples/blob.html"
 echo "   Repo root : http://localhost:${PORT}/"
 echo
