@@ -77,6 +77,61 @@ Every chart takes a `'#selector'`/canvas/element, a `data` object, and shared op
 
 Omit them all and a default muted palette cycles.
 
+### Multiple series
+
+`Line` and `Bar` accept several series at once — pass a `series` object (or a nested array with
+optional `names`). Each series gets its own colour, an auto legend, and per-series tooltips.
+Single-series data (a flat `y`/`values` array) keeps working unchanged.
+
+```js
+// Multi-series line — three lines + legend
+new Line('#el', {
+  data: {
+    x: [2018, 2019, 2020, 2021, 2022],
+    series: { Apples: [12, 19, 15, 27, 24], Pears: [8, 11, 14, 12, 18] },
+  },
+});
+
+// Grouped bars — one bar per series within each label (also `horizontal: true`)
+new Bar('#el', {
+  data: { labels: ['Q1', 'Q2', 'Q3'], series: { North: [28, 42, 35], South: [20, 30, 40] } },
+});
+```
+
+### Scales, axes & tick formatting
+
+On the cartesian charts (`Line`, `Area`, `Scatter`, plus `Bar`/`Histogram` value axes):
+
+- **Log scale** — `yScale: 'log'` (and `xScale: 'log'` on `Scatter`) for positive data; log axes
+  draw decade labels and leave the minor ticks unlabelled.
+- **Time scale** — `Line`/`Area` auto-detect `Date` x-values (or set `xScale: 'time'` for epoch/ISO
+  strings). Ticks label at the right resolution (year / month / day); tooltips show formatted dates
+  (`timeFormat`, a [d3 time-format](https://github.com/d3/d3-time-format) string).
+- **Number formatting** — `xFormat` / `yFormat` take a
+  [d3-format](https://github.com/d3/d3-format) specifier (`'$,.0f'`, `'.0%'`, `'~s'`, `','`) or a
+  `(value) => string` function, for currency / percent / SI / grouped-thousands axes.
+
+The axis chrome and legend are configurable on every cartesian chart:
+
+| Option | Effect |
+|---|---|
+| `axes: false` | draw no axis spines |
+| `xAxis: false` / `yAxis: false` | hide one spine |
+| `xAxis: { position: 'top' }` / `yAxis: { position: 'right' }` | move a spine |
+| `axisArrows: false` | spines without the arrowheads |
+| `grid: false` | drop the gridlines |
+| `legend: false` | hide the auto legend |
+| `legendOrientation: 'vertical'` | corner key instead of a bottom strip |
+| `legendGap`, `legendX`, `legendY` | nudge / pin the legend |
+
+```js
+new Bar('#el', {
+  data: { labels: ['Q1', 'Q2', 'Q3', 'Q4'], values: [12000, 28000, 21500, 35000] },
+  yFormat: '$,.0f',        // $12,000 …
+  yAxis: { position: 'right' },
+});
+```
+
 ## Interactive, responsive, accessible
 - **Hi-DPI** — canvases render at `devicePixelRatio`, so text/ink/marks are crisp on retina.
 - **Animations** — marks reveal in on load (disable with `animation: false`).
@@ -100,13 +155,14 @@ The demos load as ES modules, so they need to be served over HTTP (not opened fr
 | `examples/showcase.html` | flagship — all twelve forms on real demographic data |
 | `examples/charts.html` | bar, histogram, heatmap |
 | `examples/areas.html` | area, ridgeline, stacked area, streamgraph |
-| `examples/more-charts.html` | scatter, pie, donut, radar, line, network, sankey |
+| `examples/more-charts.html` | scatter, pie, donut, radar, line, multi-series + log + time line, network, sankey |
 | `examples/uncertainty.html` | CI band, forest, likert, calendar, chord, sparklines, annotations |
+| `examples/config.html` | configurable axes, legend & number-formatted ticks |
 | `examples/blob.html` | the paint engine, with live sliders |
 
 ## Docs
 - [Specification](./docs/SPEC.md) — vision, architecture, the paint engine, API, non-goals.
-- [Roadmap](./docs/ROADMAP.md) — phased build order (Phases 0–4 done).
+- [Roadmap](./docs/ROADMAP.md) — phased build order (engine, all chart phases and the interactivity/scales work done; release polish remaining).
 
 A real **brushstroke** engine (for richer line/flow/Sankey work) remains deferred; line and network
 here fake their edges as hand-drawn ink strokes over the fill engine.

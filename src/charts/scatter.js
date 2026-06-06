@@ -18,8 +18,8 @@ export class Scatter extends Chart {
     this.paintBackground();
 
     // `xScale`/`yScale: 'log'` opt into log axes (positive data only).
-    const xi = buildScale({ type: config.xScale, values: xs, range: [0, plot.w], tickCount: 6 });
-    const yi = buildScale({ type: config.yScale, values: ys, range: [plot.h, 0], tickCount: 5 });
+    const xi = buildScale({ type: config.xScale, values: xs, range: [0, plot.w], tickCount: 6, format: config.xFormat });
+    const yi = buildScale({ type: config.yScale, values: ys, range: [plot.h, 0], tickCount: 5, format: config.yFormat });
     const x = xi.scale;
     const y = yi.scale;
     const rScale = rs

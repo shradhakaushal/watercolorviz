@@ -6,6 +6,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, tick } from '../axes.js';
+import { tickFormat } from '../scale.js';
 import { paintRectSelection, paintRectWashReveal } from './shapes.js';
 
 export class Histogram extends Chart {
@@ -69,15 +70,17 @@ export class Histogram extends Chart {
     this.setInteractiveMarks(marks);
 
     // y ticks (counts) + x value ticks at the bin thresholds.
+    const yfmt = tickFormat(config.yFormat);
+    const xfmt = tickFormat(config.xFormat);
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
       tick(ctx, plot.x0, ty, false, { color: ink });
-      this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
+      this.text(yfmt(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
     for (const t of x.ticks(6)) {
       const tx = plot.x0 + x(t);
       tick(ctx, tx, plot.y1, true, { color: ink });
-      this.text(String(t), tx, plot.y1 + 16, { size: 12 });
+      this.text(xfmt(t), tx, plot.y1 + 16, { size: 12 });
     }
 
     this.drawAxisLines();
