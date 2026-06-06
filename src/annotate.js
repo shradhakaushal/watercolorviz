@@ -61,8 +61,8 @@ export function annotateText(ctx, x, y, text, opts = {}) {
 
 // A text callout: label at (tx,ty) with an arrow pointing to (px,py).
 export function annotateCallout(ctx, tx, ty, px, py, text, opts = {}) {
-  const { color = INK, size = 16, seed = 1 } = opts;
-  annotateText(ctx, tx, ty, text, { color, size, align: tx <= px ? 'left' : 'right' });
+  const { color = INK, size = 16, seed = 1, font = FONT } = opts;
+  annotateText(ctx, tx, ty, text, { color, size, font, align: tx <= px ? 'left' : 'right' });
   const ax = tx + (tx <= px ? text.length * size * 0.3 : -text.length * size * 0.3);
   annotateArrow(ctx, ax, ty + size * 0.4, px, py, { color, width: 1.8, seed });
 }

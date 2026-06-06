@@ -20,6 +20,7 @@ export class Area extends Chart {
       ? d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w])
       : d3.scalePoint().domain(xs).range([0, plot.w]);
     const y = d3.scaleLinear().domain([0, d3.max(ys)]).nice().range([plot.h, 0]);
+    this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     if (config.grid !== false) {
       for (const t of y.ticks(5)) {

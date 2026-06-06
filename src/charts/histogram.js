@@ -30,6 +30,7 @@ export class Histogram extends Chart {
       .domain([0, d3.max(bins, (b) => b.length)])
       .nice()
       .range([plot.h, 0]);
+    this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     // Faint horizontal gridlines under the bars.
     if (config.grid !== false) {

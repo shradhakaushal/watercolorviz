@@ -21,6 +21,7 @@ export class Scatter extends Chart {
     const rScale = rs
       ? d3.scaleSqrt().domain([0, d3.max(rs)]).range([3, config.maxRadius || 26])
       : null;
+    this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);

@@ -9,6 +9,7 @@
 import { paintPaper } from './paper.js';
 import { inkLine, arrowhead, INK } from './axes.js';
 import { colorAt } from './palette.js';
+import { annotateArrow, annotateCircle, annotateText, annotateCallout } from './annotate.js';
 
 export class Chart {
   constructor(el, config = {}) {
@@ -61,7 +62,54 @@ export class Chart {
       h: height - m.top - m.bottom,
     };
 
-    if (config.data) this.render();
+    if (config.data) {
+      this.render();
+      this.drawAnnotations();
+    }
+  }
+
+  // Resolve an annotation point. A point is either:
+  //   [dataX, dataY]        — chart data coords (mapped via `this.project`,
+  //                           which cartesian charts set during render)
+  //   ['40%', '60%']        — fraction of the plot rect (works on ANY chart)
+  //   pixel [x, y]          — used as-is when no projection applies
+  // A `*Px` variant on the annotation forces pixels.
+  resolvePt(pt, pxPt) {
+    if (pxPt) return pxPt;
+    if (!pt) return null;
+    if (typeof pt[0] === 'string' && pt[0].endsWith('%')) {
+      return [this.plot.x0 + (parseFloat(pt[0]) / 100) * this.plot.w, this.plot.y0 + (parseFloat(pt[1]) / 100) * this.plot.h];
+    }
+    if (this.project) return this.project(pt[0], pt[1]);
+    return pt;
+  }
+
+  // Hand-drawn annotations, available on EVERY chart via `config.annotations`.
+  // Each item: { type: 'circle'|'arrow'|'text'|'callout', ... , color?, seed? }.
+  drawAnnotations() {
+    const list = this.config.annotations;
+    if (!Array.isArray(list) || !list.length) return;
+    const ctx = this.ctx;
+    const accent = this.config.annotationColor || '#c8604f';
+    for (const a of list) {
+      const color = a.color || accent;
+      const seed = a.seed ?? 1;
+      if (a.type === 'circle') {
+        const [x, y] = this.resolvePt(a.at, a.atPx);
+        annotateCircle(ctx, x, y, a.r ?? 22, a.ry ?? a.r ?? 22, { color, width: a.width ?? 2, seed });
+      } else if (a.type === 'arrow') {
+        const [x1, y1] = this.resolvePt(a.from, a.fromPx);
+        const [x2, y2] = this.resolvePt(a.to, a.toPx);
+        annotateArrow(ctx, x1, y1, x2, y2, { color, width: a.width ?? 2, seed });
+      } else if (a.type === 'text') {
+        const [x, y] = this.resolvePt(a.at, a.atPx);
+        annotateText(ctx, x, y, a.text, { color, size: a.size ?? 16, align: a.align ?? 'left', font: this.font });
+      } else if (a.type === 'callout') {
+        const [tx, ty] = this.resolvePt(a.at, a.atPx);
+        const [px, py] = this.resolvePt(a.to, a.toPx);
+        annotateCallout(ctx, tx, ty, px, py, a.text, { color, size: a.size ?? 16, seed, font: this.font });
+      }
+    }
   }
 
   paintBackground() {

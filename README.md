@@ -21,8 +21,24 @@ All ride a single **watercolor fill engine** plus hand-drawn ink chrome:
 | **Honest uncertainty** | confidence/prediction interval, forest plot |
 | **Survey & craft** | likert, calendar heatmap, sparkline |
 
-Plus an **annotation layer** (`annotateArrow`, `annotateCircle`, `annotateCallout`) — hand-drawn
-arrows, circles and callouts that match the chart aesthetic, drawn on any chart's canvas.
+### Annotations (on any chart)
+Pass `annotations: [...]` to **any** chart — hand-drawn circles, arrows, text and callouts that
+match the aesthetic, placed in **data coordinates** (cartesian charts), `'40%'` plot fractions
+(any chart), or pixels:
+
+```js
+new Line('#el', {
+  data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] },
+  annotations: [
+    { type: 'circle', at: [5, 60], r: 22 },
+    { type: 'callout', at: [2, 64], to: [5, 60], text: 'new high' },
+    { type: 'text', at: ['50%', '10%'], text: 'note' },
+  ],
+});
+```
+
+The primitives are also exported standalone (`annotateArrow`, `annotateCircle`, `annotateText`,
+`annotateCallout`) to draw on any canvas directly.
 
 ## Usage
 

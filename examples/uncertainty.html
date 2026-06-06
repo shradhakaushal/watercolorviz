@@ -37,7 +37,6 @@
     <script type="module">
       const m = await import('../src/index.js');
       const { Interval, Forest, Likert, Calendar, Chord, Sankey, Sparkline, Line } = m;
-      const { annotateCircle, annotateCallout } = m;
       if (document.fonts && document.fonts.ready) { try { await document.fonts.load('22px Caveat'); await document.fonts.ready; } catch (e) {} }
 
       let s = 5; const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -97,11 +96,14 @@
         colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb', '#5fa3a0'], seed: 5,
       });
 
-      // 7. Annotated chart.
-      new Line('#annotated', { title: 'Annotated', width: 480, data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] }, color: '#6f93c2', seed: 2 });
-      const actx = document.getElementById('annotated').getContext('2d');
-      annotateCircle(actx, 430, 78, 24, 20, { color: '#c8604f', seed: 3 });
-      annotateCallout(actx, 250, 64, 416, 80, 'new high', { color: '#c8604f', seed: 4 });
+      // 7. Annotated chart — annotations are a first-class option, in DATA coords.
+      new Line('#annotated', {
+        title: 'Annotated', width: 480, data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] }, color: '#6f93c2', seed: 2,
+        annotations: [
+          { type: 'circle', at: [5, 60], r: 22 },
+          { type: 'callout', at: [2, 64], to: [5, 60], text: 'new high' },
+        ],
+      });
 
       // 8. Sparklines.
       new Sparkline('#s1', { data: { y: Array.from({ length: 24 }, () => 5 + rnd() * 10) }, color: '#dc8068' });

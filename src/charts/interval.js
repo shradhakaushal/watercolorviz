@@ -28,6 +28,7 @@ export class Interval extends Chart {
       .domain([Math.min(0, d3.min(lo)), d3.max(hi)])
       .nice()
       .range([plot.h, 0]);
+    this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     if (config.grid !== false) {
       for (const t of y.ticks(5)) {
