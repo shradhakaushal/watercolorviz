@@ -30,6 +30,7 @@
     <div class="grid">
       <canvas id="ridge"></canvas>
       <canvas id="area"></canvas>
+      <canvas id="timearea"></canvas>
       <canvas id="stacked"></canvas>
       <canvas id="stream"></canvas>
     </div>
@@ -66,6 +67,14 @@
       const ax = Array.from({ length: 24 }, (_, i) => i);
       const ay = ax.map((i) => 30 + 22 * Math.sin(i / 3.2) + 10 * Math.sin(i / 1.3) + 14);
       new Area('#area', { title: 'Area', data: { x: ax, y: ay }, color: '#6f93c2', seed: 7 });
+
+      // Time-axis area: Date x-values get formatted date ticks automatically.
+      const months = Array.from({ length: 12 }, (_, i) => new Date(2025, i, 1));
+      new Area('#timearea', {
+        title: 'Area — time axis',
+        data: { x: months, y: [20, 24, 22, 30, 28, 35, 40, 38, 33, 29, 26, 31] },
+        color: '#94a854', seed: 5, yLabel: 'k$',
+      });
 
       // Stacked area + streamgraph.
       const sx = Array.from({ length: 30 }, (_, i) => i);
