@@ -117,12 +117,34 @@ classes on the fill engine; demo `examples/uncertainty.html`.
 
 ---
 
-## Phase 5 — Release polish
-- [ ] Demo page showcasing all 10 visualizations.
-- [ ] README with live examples + install (CDN + npm).
-- [ ] Recommended/bundled watercolor-friendly font.
-- [ ] Accessibility pass (real labels, ARIA, tooltips).
-- [ ] `v1.0` (vanilla JS core only).
+## Phase 7 — Interactivity, multi-series & scales ✅ DONE
+Done after the core chart set, in small increments (see notes). All ride the
+existing engine — no new rendering primitives.
+
+- [x] **Hi-DPI** rendering (canvas backed at `devicePixelRatio`).
+- [x] **Load + hover animations** (staggered reveal, neighbour highlighting;
+      `animation: false` to disable).
+- [x] **Tooltips** on every chart (`label` + colour key; `tooltip: false`).
+- [x] **Responsive** auto-resize (`width: '100%'` / `responsive: true` + `aspect`).
+- [x] **Accessibility** — `role="img"` + `aria-label` data summary (`ariaLabel`).
+- [x] **Multi-series line** and **grouped bars** (`data.series` / nested arrays,
+      auto legend, per-series tooltips).
+- [x] **Configurable axes & legend** — hide/move spines, drop arrows/grid, hide
+      or reposition the legend (with reserved spacing so it clears the labels).
+- [x] **Log & time scales** + **number tick formatting** via the shared
+      `buildScale` helper (`yScale`/`xScale`, `xFormat`/`yFormat`, `timeFormat`).
+
+Demos: `examples/more-charts.html`, `examples/bars.html`, `examples/config.html`.
+
+---
+
+## Phase 5 — Release polish (remaining)
+- [x] Demo page showcasing the visualizations (`examples/showcase.html` + per-family demos).
+- [x] README with live examples (CDN importmap + class list + options).
+- [x] Accessibility pass (real labels, ARIA, tooltips).
+- [ ] npm install path / publish (`version` is still `0.0.0`).
+- [ ] Recommended/bundled watercolor-friendly font (demos load Caveat from Google Fonts).
+- [ ] `v1.0` tag (vanilla JS core only).
 
 ---
 
@@ -130,7 +152,7 @@ classes on the fill engine; demo `examples/uncertainty.html`.
 - **Brushstroke engine** → line, connected scatter, network, Sankey, flow.
 - SVG output + PNG/SVG export.
 - React / Vue / Python wrappers.
-- Animation / transitions, themes, palette generators, responsive auto-resize.
+- Themes, palette generators.
 - File/URL data loading.
 - WebGL/shader rendering — only if Canvas is measurably too slow.
 
