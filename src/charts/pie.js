@@ -23,10 +23,16 @@ export class Pie extends Chart {
     values.forEach((v, i) => {
       const a1 = a + (v / total) * Math.PI * 2;
       paintWedge(ctx, cx, cy, r0, r1, a, a1, { color: this.colorFor(i), seed: seed + i * 13, ink });
-      // label just outside the mid-angle
       const mid = (a + a1) / 2;
+      // category label just outside the rim
       const lr = r1 + 16;
       this.text(labels[i], cx + Math.cos(mid) * lr, cy + Math.sin(mid) * lr, { size: 13 });
+      // percentage inside the slice (skip if the slice is too thin to fit)
+      const pct = Math.round((v / total) * 100);
+      if (config.percent !== false && a1 - a > 0.25) {
+        const ir = r0 + (r1 - r0) * (r0 > 0 ? 0.5 : 0.62);
+        this.text(`${pct}%`, cx + Math.cos(mid) * ir, cy + Math.sin(mid) * ir, { size: 12 });
+      }
       a = a1;
     });
 

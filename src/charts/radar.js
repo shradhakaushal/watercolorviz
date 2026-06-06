@@ -49,6 +49,12 @@ export class Radar extends Chart {
       paintClosedWash(ctx, poly, { color: this.colorFor(s), seed: seed + s * 17, intensity: 0.7, ink });
     });
 
+    // Series key (when names given, or whenever there is more than one series).
+    const seriesNames = config.seriesNames || (series.length > 1 ? series.map((_, s) => `Series ${s + 1}`) : null);
+    if (seriesNames && config.legend !== false) {
+      this.drawLegend(seriesNames.map((n, s) => ({ label: n, color: this.colorFor(s) })), { y: plot.y1 + 18 });
+    }
+
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
   }
 }

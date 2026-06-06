@@ -137,6 +137,39 @@ export class Chart {
     ctx.restore();
   }
 
+  // Shared key/legend. `items` = [{ label, color }]. Horizontal centred under
+  // the plot by default; pass `orientation: 'vertical'` (+ x/y) for a corner key.
+  drawLegend(items, opts = {}) {
+    const { ctx, plot } = this;
+    const { orientation = 'horizontal', size = 11, swatch = 10 } = opts;
+    const swatchAt = (x, y, color) => {
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y - swatch / 2, swatch, swatch);
+      ctx.restore();
+    };
+    if (orientation === 'vertical') {
+      const x = opts.x ?? plot.x1 - 96;
+      let y = opts.y ?? plot.y0 + 8;
+      for (const it of items) {
+        swatchAt(x, y, it.color);
+        this.text(it.label, x + swatch + 6, y, { size, align: 'left' });
+        y += size + 7;
+      }
+      return;
+    }
+    const w = (it) => swatch + 6 + it.label.length * size * 0.56 + 16;
+    const total = items.reduce((a, it) => a + w(it), 0);
+    let x = opts.x ?? plot.x0 + Math.max(0, (plot.w - total) / 2);
+    const y = opts.y ?? plot.y1 + 24;
+    for (const it of items) {
+      swatchAt(x, y, it.color);
+      this.text(it.label, x + swatch + 5, y, { size, align: 'left' });
+      x += w(it);
+    }
+  }
+
   // Subclasses override.
   render() {}
 }

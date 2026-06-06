@@ -40,6 +40,9 @@ export class Scatter extends Chart {
       paintDot(ctx, cx, cy, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
     });
 
+    // Optional category key: pass `legend: [{ label, color }]`.
+    if (Array.isArray(config.legend)) this.drawLegend(config.legend);
+
     this.drawAxisLines();
     this.drawTitleAndLabels();
   }

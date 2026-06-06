@@ -61,21 +61,9 @@ export class Likert extends Chart {
       this.text(q, plot.x0 - 10, y0 + barH / 2, { size: 12, align: 'right' });
     });
 
-    // Legend along the bottom (centred), under the bars.
+    // Legend along the bottom, under the bars.
     if (config.legend !== false) {
-      const widths = levels.map((lab) => 26 + lab.length * 5.6);
-      const total = widths.reduce((a, b) => a + b, 0);
-      let lx = plot.x0 + Math.max(0, (plot.w - total) / 2);
-      const ly = plot.y1 + 24;
-      levels.forEach((lab, li) => {
-        ctx.save();
-        ctx.fillStyle = colors[li];
-        ctx.globalAlpha = 0.85;
-        ctx.fillRect(lx, ly - 5, 10, 10);
-        ctx.restore();
-        this.text(lab, lx + 14, ly, { size: 10, align: 'left' });
-        lx += widths[li];
-      });
+      this.drawLegend(levels.map((lab, li) => ({ label: lab, color: colors[li] })), { size: 10 });
     }
 
     this.drawTitleAndLabels();

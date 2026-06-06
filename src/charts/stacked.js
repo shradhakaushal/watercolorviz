@@ -56,14 +56,10 @@ export class StackedArea extends Chart {
     }, { bottom: !stream });
 
     if (!useRamp && config.legend !== false) {
-      names.forEach((k, si) => {
-        const ly = plot.y0 + 6 + si * 18;
-        ctx.save();
-        ctx.fillStyle = colors[si];
-        ctx.globalAlpha = 0.85;
-        ctx.fillRect(plot.x1 - 96, ly - 8, 12, 12);
-        ctx.restore();
-        this.text(k, plot.x1 - 80, ly - 2, { size: 13, align: 'left' });
+      this.drawLegend(names.map((k, si) => ({ label: k, color: colors[si] })), {
+        orientation: 'vertical',
+        x: plot.x1 - 92,
+        y: plot.y0 + 10,
       });
     }
 
