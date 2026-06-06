@@ -57,16 +57,17 @@ export class StackedArea extends Chart {
       stack.forEach((layer, si) => {
         const colorIndex = names.indexOf(layer.key);
         const topPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[1])]);
-        const botPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[0]) + (!stream && si > 0 ? SEAM : 0)]);
+        const bandBotPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[0])]);
+        const paintBotPts = bandBotPts.map(([px, py]) => [px, py + (!stream && si > 0 ? SEAM : 0)]);
         const color = colors[colorIndex];
         const reveal = this.loadProgress(si);
         const extend = { x0: plot.x0, x1: plot.x1, ov, bottomOv: !stream && si === 0 ? ov : 0 };
         withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, reveal, () => {
-          paintBandWash(ctx, topPts, botPts, { color, seed: seed + si * 17, intensity: 0.95, extend });
+          paintBandWash(ctx, topPts, paintBotPts, { color, seed: seed + si * 17, intensity: 0.95, extend });
         });
         marks.push({
           index: si,
-          points: bandPolygon(topPts, botPts),
+          points: bandPolygon(topPts, bandBotPts),
           top: topPts,
           color,
           seed: seed + si * 17,
@@ -75,8 +76,10 @@ export class StackedArea extends Chart {
       marks.forEach((mark) => {
         paintPolygonSelection(ctx, mark.points, {
           color: mark.color,
-          outlinePoints: mark.top,
-          closedOutline: false,
+          outlinePoints: mark.points,
+          closedOutline: true,
+          boundaryStrength: stream ? 0.72 : 0.82,
+          glowStrength: stream ? 1.1 : 1,
           progress: this.selectionProgress(mark.index),
         });
       });

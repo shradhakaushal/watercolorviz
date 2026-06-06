@@ -4,7 +4,39 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { paintDot } from './shapes.js';
+import { paintDot, paintDotSelection } from './shapes.js';
+
+function partialPolyline(points, progress) {
+  const p = Math.max(0, Math.min(1, progress));
+  if (p <= 0 || points.length < 2) return [];
+  if (p >= 0.995) return points;
+
+  const lengths = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    lengths.push(len);
+    total += len;
+  }
+
+  let remaining = total * p;
+  const out = [points[0]];
+  for (let i = 0; i < lengths.length; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (remaining >= lengths[i]) {
+      out.push(b);
+      remaining -= lengths[i];
+      continue;
+    }
+    const t = lengths[i] ? remaining / lengths[i] : 0;
+    out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    break;
+  }
+  return out;
+}
 
 export class Line extends Chart {
   render() {
@@ -32,11 +64,42 @@ export class Line extends Chart {
     // `lineColor` overrides just the stroke if you want it inked separately.
     const lineColor = config.lineColor || this.colorFor(0);
 
-    inkPath(ctx, pts, { seed, width: 2.1, gaps: false, color: lineColor });
+    const lineReveal = this.loadProgress(0);
+    const visiblePts = partialPolyline(pts, lineReveal);
+    if (visiblePts.length > 1) {
+      inkPath(ctx, visiblePts, { seed, width: 2.1, gaps: false, color: lineColor });
+    }
+
+    pts.forEach((_, i) => {
+      const progress = this.selectionProgress(i);
+      if (progress <= 0.01) return;
+      if (i > 0) {
+        inkPath(ctx, [pts[i - 1], pts[i]], { seed: seed + 600 + i, width: 2.6 + progress, gaps: false, color: '#000000', opacity: 0.78 * progress });
+      }
+      if (i < pts.length - 1) {
+        inkPath(ctx, [pts[i], pts[i + 1]], { seed: seed + 700 + i, width: 2.6 + progress, gaps: false, color: '#000000', opacity: 0.78 * progress });
+      }
+    });
 
     // Markers.
+    const marks = [];
     pts.forEach((p, i) => {
-      paintDot(ctx, p[0], p[1], config.radius || 6, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+      const r = config.radius || 6;
+      const reveal = this.loadProgress(i + 1);
+      if (reveal > 0) {
+        const scale = 0.72 + reveal * 0.28;
+        ctx.save();
+        ctx.globalAlpha = 0.25 + reveal * 0.75;
+        ctx.translate(p[0], p[1]);
+        ctx.scale(scale, scale);
+        paintDot(ctx, 0, 0, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+        ctx.restore();
+      }
+      paintDotSelection(ctx, p[0], p[1], r, {
+        color: this.colorFor(i),
+        progress: this.selectionProgress(i),
+      });
+      marks.push({ index: i, cx: p[0], cy: p[1], r, hitPad: 6 });
     });
 
     for (const t of y.ticks(5)) {
@@ -56,5 +119,7 @@ export class Line extends Chart {
 
     this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.setInteractiveMarks(marks);
+    this.scheduleLoadAnimation(pts.length + 1);
   }
 }
