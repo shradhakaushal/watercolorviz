@@ -138,13 +138,30 @@ Demos: `examples/more-charts.html`, `examples/bars.html`, `examples/config.html`
 
 ---
 
+## Phase 8 — Production hardening ✅ DONE
+A pre-release pass turning the demo into a solid library.
+
+- [x] **Paper cached** to an offscreen buffer — the per-pixel noise field is
+      painted once, not every frame (a full hover frame went from ~55ms to ~1ms).
+- [x] **Per-instance state** — render dpr set per draw; mark cache is a bounded
+      LRU and no longer wiped across charts on resize.
+- [x] **Lifecycle** — `destroy()` removes listeners and cancels animation frames;
+      `draw()` no-ops afterwards.
+- [x] **Input validation** — clear `watercolorviz:` errors for malformed data,
+      graceful empty state, `NaN`/`Infinity` sanitised (`src/validate.js`).
+- [x] **Shared cartesian helpers** — series normalisation (`src/series.js`) and
+      x-scale resolution (`scale.resolveXScale`) deduplicated across line/area/bar.
+- [x] **Keyboard a11y** + `prefers-reduced-motion`.
+- [x] **TypeScript types** (`index.d.ts`), npm packaging (`exports`/`files`/
+      `types`), and a `node:test` suite + CI (`npm test`).
+
 ## Phase 5 — Release polish (remaining)
 - [x] Demo page showcasing the visualizations (`examples/showcase.html` + per-family demos).
 - [x] README with live examples (CDN importmap + class list + options).
-- [x] Accessibility pass (real labels, ARIA, tooltips).
-- [ ] npm install path / publish (`version` is still `0.0.0`).
+- [x] Accessibility pass (ARIA, keyboard, reduced-motion, tooltips).
+- [x] npm packaging (`exports`, `files`, `types`; version `0.1.0`).
 - [ ] Recommended/bundled watercolor-friendly font (demos load Caveat from Google Fonts).
-- [ ] `v1.0` tag (vanilla JS core only).
+- [ ] `v1.0` tag + npm publish.
 
 ---
 

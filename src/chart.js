@@ -7,7 +7,7 @@
 // `render()`.
 
 import { paintPaper } from './paper.js';
-import { setRenderDpr, clearMarkCache } from './watercolor.js';
+import { setRenderDpr } from './watercolor.js';
 import { inkLine, arrowhead, INK } from './axes.js';
 import { colorAt } from './palette.js';
 import { annotateArrow, annotateCircle, annotateText, annotateCallout, annotateBand, annotateBracket } from './annotate.js';
@@ -143,6 +143,11 @@ export class Chart {
   // EVERY redraw path (initial, load animation, hover, resize) goes through
   // here so annotations and tooltips survive re-renders.
   draw() {
+    if (this._destroyed) return;
+    // Mark resolution is a module-level default in the paint engine; set it to
+    // THIS chart's dpr before every render so multiple charts (potentially at
+    // different devicePixelRatios) don't read each other's value.
+    setRenderDpr(this.dpr);
     this.render();
     this.drawAnnotations();
     this.drawTooltip();
@@ -215,13 +220,28 @@ export class Chart {
   }
 
   paintBackground() {
-    // Paper is written with putImageData, which ignores the ctx transform, so
-    // render it at the device pixel size (and scale the tooth back to keep its
-    // logical frequency).
+    // The paper is a per-pixel noise field — far too expensive to recompute on
+    // every frame (hover/load animations call render() ~60×/s). Paint it ONCE to
+    // an offscreen buffer keyed by device size + colour, then just blit it. The
+    // buffer is rebuilt only when those change (e.g. on resize).
     const ctx = this.ctx;
+    const dw = this.canvas.width;
+    const dh = this.canvas.height;
+    const key = `${dw}x${dh}:${this.paper || ''}`;
+    if (!this._paperBuffer || this._paperKey !== key) {
+      const oc = document.createElement('canvas');
+      oc.width = dw;
+      oc.height = dh;
+      // Paper is written with putImageData (which ignores transforms), so it is
+      // rendered at device pixel size; scale the tooth back to keep its logical
+      // frequency.
+      paintPaper(oc.getContext('2d'), dw, dh, { color: this.paper, scale: 0.16 / this.dpr });
+      this._paperBuffer = oc;
+      this._paperKey = key;
+    }
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    paintPaper(ctx, this.canvas.width, this.canvas.height, { color: this.paper, scale: 0.16 / this.dpr });
+    ctx.drawImage(this._paperBuffer, 0, 0);
     ctx.restore();
   }
 
@@ -308,6 +328,16 @@ export class Chart {
     if (config.xLabel) this.text(config.xLabel, plot.x0 + plot.w / 2, this.height - 8, { size: 14 });
   }
 
+  // Paint just the paper, title and a faint centred message. Charts call this
+  // when there is nothing to plot, so empty/degenerate data degrades to a clear
+  // frame instead of throwing a cryptic canvas error.
+  emptyState(message = 'No data') {
+    this.paintBackground();
+    if (this.config.title) this.text(this.config.title, this.width / 2, this.margin.top / 2, { size: 22 });
+    this.text(message, this.plot.x0 + this.plot.w / 2, this.plot.y0 + this.plot.h / 2, { size: 15, opacity: 0.45 });
+    this.setInteractiveMarks([]);
+  }
+
   // Run `fn` with the canvas clipped to the plot's horizontal extent and (by
   // default) its bottom baseline, leaving the top open. Area/band charts paint
   // their fills here: the fill polygon is pushed OUTWARD past these edges, so
@@ -324,53 +354,99 @@ export class Chart {
     ctx.restore();
   }
 
+  // Hit-test a pointer event against the marks (in LOGICAL coords) and record
+  // the pointer position for the tooltip. Returns the hit mark's index or null.
+  _hitTest(event) {
+    const box = this.canvas.getBoundingClientRect();
+    if (!box.width || !box.height) return null;
+    // The CSS box maps to this.width/height regardless of devicePixelRatio.
+    const x = (event.clientX - box.left) * (this.width / box.width);
+    const y = (event.clientY - box.top) * (this.height / box.height);
+    this._pointer = { x, y };
+    for (let i = this._interactiveMarks.length - 1; i >= 0; i--) {
+      const mark = this._interactiveMarks[i];
+      if (mark.points && pointInPolygon(x, y, mark.points)) return mark.index;
+      if (mark.cx != null && mark.cy != null && mark.r != null) {
+        const pad = mark.hitPad ?? 4;
+        if (Math.hypot(x - mark.cx, y - mark.cy) <= mark.r + pad) return mark.index;
+      }
+      const pad = mark.hitPad ?? 4;
+      if (mark.x == null || mark.y == null || mark.w == null || mark.h == null) continue;
+      if (x >= mark.x - pad && x <= mark.x + mark.w + pad && y >= mark.y - pad && y <= mark.y + mark.h + pad) {
+        return mark.index;
+      }
+    }
+    return null;
+  }
+
+  // A representative point for a mark (used to place the tooltip for keyboard
+  // navigation, where there is no pointer position).
+  _markCenter(mark) {
+    if (mark.cx != null && mark.cy != null) return { x: mark.cx, y: mark.cy };
+    if (mark.x != null && mark.w != null) return { x: mark.x + mark.w / 2, y: mark.y + mark.h / 2 };
+    if (mark.points && mark.points.length) {
+      let sx = 0; let sy = 0;
+      for (const p of mark.points) { sx += p[0]; sy += p[1]; }
+      return { x: sx / mark.points.length, y: sy / mark.points.length };
+    }
+    return { x: this.plot.x0 + this.plot.w / 2, y: this.plot.y0 + this.plot.h / 2 };
+  }
+
+  _setHoverTarget(next) {
+    if (next === this._hoverTarget) return;
+    this._hoverTarget = next;
+    if (this.canvas.style) this.canvas.style.cursor = next == null ? '' : 'pointer';
+    // Announce the focused datum to assistive tech (restore the summary when
+    // nothing is focused).
+    if (typeof this.canvas.setAttribute === 'function') {
+      const mark = next == null ? null : this._interactiveMarks.find((m) => m.index === next);
+      this.canvas.setAttribute('aria-label', mark && mark.label ? String(mark.label) : this.ariaLabel());
+    }
+    this.startSelectionAnimation();
+  }
+
+  // Arrow keys move the highlight across marks; Home/End jump to the ends;
+  // Escape clears. Gives keyboard users access to the same data the tooltip shows.
+  _handleKey(e) {
+    const marks = this._interactiveMarks;
+    if (!marks.length) return;
+    const order = marks.map((m) => m.index);
+    let cur = order.indexOf(this._hoverTarget);
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': cur = cur < 0 ? 0 : (cur + 1) % order.length; break;
+      case 'ArrowLeft': case 'ArrowUp': cur = cur < 0 ? order.length - 1 : (cur - 1 + order.length) % order.length; break;
+      case 'Home': cur = 0; break;
+      case 'End': cur = order.length - 1; break;
+      case 'Escape': this._setHoverTarget(null); return;
+      default: return;
+    }
+    e.preventDefault();
+    const idx = order[cur];
+    this._pointer = this._markCenter(marks.find((m) => m.index === idx));
+    this._setHoverTarget(idx);
+  }
+
   setInteractiveMarks(marks) {
     this._interactiveMarks = marks;
     if (this.config.interactive === false || this.config.selection === false) return;
     if (this._interactionInstalled || typeof this.canvas.addEventListener !== 'function') return;
 
-    const hitTest = (event) => {
-      const box = this.canvas.getBoundingClientRect();
-      if (!box.width || !box.height) return null;
-      // Marks are in LOGICAL coords; map the pointer to logical px (CSS box maps
-      // to this.width/height regardless of devicePixelRatio).
-      const x = (event.clientX - box.left) * (this.width / box.width);
-      const y = (event.clientY - box.top) * (this.height / box.height);
-      this._pointer = { x, y };
-      for (let i = this._interactiveMarks.length - 1; i >= 0; i--) {
-        const mark = this._interactiveMarks[i];
-        if (mark.points && pointInPolygon(x, y, mark.points)) {
-          return mark.index;
-        }
-        if (mark.cx != null && mark.cy != null && mark.r != null) {
-          const pad = mark.hitPad ?? 4;
-          if (Math.hypot(x - mark.cx, y - mark.cy) <= mark.r + pad) {
-            return mark.index;
-          }
-        }
-        const pad = mark.hitPad ?? 4;
-        if (mark.x == null || mark.y == null || mark.w == null || mark.h == null) continue;
-        if (
-          x >= mark.x - pad &&
-          x <= mark.x + mark.w + pad &&
-          y >= mark.y - pad &&
-          y <= mark.y + mark.h + pad
-        ) {
-          return mark.index;
-        }
-      }
-      return null;
-    };
+    // Keep handler references so destroy() can remove them (avoids leaks when a
+    // chart is torn down in an SPA).
+    this._onPointerMove = (event) => this._setHoverTarget(this._hitTest(event));
+    this._onPointerLeave = () => this._setHoverTarget(null);
+    this.canvas.addEventListener('pointermove', this._onPointerMove);
+    this.canvas.addEventListener('pointerleave', this._onPointerLeave);
 
-    const setTarget = (next) => {
-      if (next === this._hoverTarget) return;
-      this._hoverTarget = next;
-      this.canvas.style.cursor = next == null ? '' : 'pointer';
-      this.startSelectionAnimation();
-    };
-
-    this.canvas.addEventListener('pointermove', (event) => setTarget(hitTest(event)));
-    this.canvas.addEventListener('pointerleave', () => setTarget(null));
+    // Keyboard access: make the canvas focusable and navigate marks with the
+    // arrow keys (disable with `keyboard: false`).
+    if (this.config.keyboard !== false && typeof this.canvas.setAttribute === 'function') {
+      this.canvas.setAttribute('tabindex', '0');
+      this._onKeyDown = (e) => this._handleKey(e);
+      this._onBlur = () => this._setHoverTarget(null);
+      this.canvas.addEventListener('keydown', this._onKeyDown);
+      this.canvas.addEventListener('blur', this._onBlur);
+    }
     this._interactionInstalled = true;
   }
 
@@ -378,8 +454,15 @@ export class Chart {
     return this._selectionProgress.get(index) || 0;
   }
 
+  // Animations are suppressed when disabled in config OR when the user's OS
+  // signals prefers-reduced-motion (an accessibility requirement).
+  _reducedMotion() {
+    if (this.config.animation === false || this.config.animate === false) return true;
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
   loadProgress(index = 0) {
-    if (this.config.animation === false || this.config.animate === false) return 1;
+    if (this._reducedMotion()) return 1;
     const duration = this.config.animationDuration ?? 850;
     const stagger = this.config.animationStagger ?? 65;
     const delay = this.config.animationDelay ?? 0;
@@ -388,7 +471,7 @@ export class Chart {
   }
 
   scheduleLoadAnimation(markCount = 1) {
-    if (this.config.animation === false || this.config.animate === false) return;
+    if (this._reducedMotion()) return;
     if (typeof requestAnimationFrame !== 'function') return;
 
     const duration = this.config.animationDuration ?? 850;
@@ -404,6 +487,17 @@ export class Chart {
   }
 
   startSelectionAnimation() {
+    if (this._reducedMotion()) {
+      // No tween: snap the selection to its target and repaint once.
+      const live = new Set(this._interactiveMarks.map((m) => m.index));
+      for (const i of this._selectionProgress.keys()) live.add(i);
+      for (const i of live) {
+        if (i === this._hoverTarget) this._selectionProgress.set(i, 1);
+        else this._selectionProgress.delete(i);
+      }
+      this.draw();
+      return;
+    }
     if (this._hoverRaf) return;
     const raf = typeof requestAnimationFrame === 'function'
       ? requestAnimationFrame
@@ -575,15 +669,29 @@ export class Chart {
       x1: width - m.right, y1: height - m.bottom,
       w: width - m.left - m.right, h: height - m.top - m.bottom,
     };
-    clearMarkCache(); // geometry changed → old cached marks are stale
+    // Old-size marks become stale but are keyed by geometry, so they simply
+    // stop being hit and age out of the LRU — no global wipe (which would also
+    // evict every OTHER chart's cached marks on the page).
+    this._paperBuffer = null; // size changed → rebuild the paper buffer
     this._animationStart = this.now();
     if (this.config.data) this.draw();
   }
 
-  // Detach observers/listeners (call when removing a chart).
+  // Detach observers, listeners and pending animation frames (call when
+  // removing a chart). After destroy(), draw() is a no-op.
   destroy() {
+    this._destroyed = true;
     if (this._ro) this._ro.disconnect();
     this._ro = null;
+    if (this._loadRaf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._loadRaf);
+    if (this._hoverRaf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._hoverRaf);
+    this._loadRaf = null;
+    this._hoverRaf = null;
+    if (this._onPointerMove) this.canvas.removeEventListener('pointermove', this._onPointerMove);
+    if (this._onPointerLeave) this.canvas.removeEventListener('pointerleave', this._onPointerLeave);
+    if (this._onKeyDown) this.canvas.removeEventListener('keydown', this._onKeyDown);
+    if (this._onFocus) this.canvas.removeEventListener('focus', this._onFocus);
+    if (this._onBlur) this.canvas.removeEventListener('blur', this._onBlur);
   }
 
   // Subclasses override.

@@ -7,13 +7,19 @@ import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, tick } from '../axes.js';
 import { tickFormat } from '../scale.js';
+import { requireArray, cleanNumbers } from '../validate.js';
 import { paintRectSelection, paintRectWashReveal } from './shapes.js';
 
 export class Histogram extends Chart {
   render() {
     const { ctx, plot, seed, config, ink } = this;
-    const values = config.data.values;
+    const values = cleanNumbers(requireArray(config.data.values, 'data.values', { allowEmpty: true }));
     this.paintBackground();
+
+    if (values.length === 0) {
+      this.emptyState();
+      return;
+    }
 
     const x = d3
       .scaleLinear()

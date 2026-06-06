@@ -25,6 +25,31 @@ export function tickFormat(format) {
   return d3.format(format);
 }
 
+// Resolve a cartesian x-axis from raw x data + config, shared by Line/Area.
+// Detects three kinds: a time axis (Date values or `xScale: 'time'`), a numeric
+// linear axis, or a categorical band of the raw labels. Returns the d3 scale,
+// the `kind`, the pixel-space `values` to plot against, the tick values
+// (`null` for categorical → label every category), a tick `format`, and
+// `labelAt(i)` for tooltips (formatted dates / numbers / raw category).
+export function resolveXScale({ xs, plot, config = {} }) {
+  const timeX = config.xScale === 'time' || xs[0] instanceof Date;
+  const numericX = !timeX && typeof xs[0] === 'number';
+
+  if (timeX) {
+    const values = xs.map((d) => (d instanceof Date ? d : new Date(d)));
+    const xi = buildScale({ type: 'time', values, range: [0, plot.w], tickCount: config.xTicks || 6, nice: config.xNice !== false });
+    const tip = d3.timeFormat(config.timeFormat || '%b %e, %Y');
+    return { x: xi.scale, kind: 'time', values, ticks: xi.ticks, format: xi.format, labelAt: (i) => tip(values[i]) };
+  }
+  if (numericX) {
+    const x = d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w]);
+    const fmt = tickFormat(config.xFormat);
+    return { x, kind: 'numeric', values: xs, ticks: x.ticks(config.xTicks || 6), format: fmt, labelAt: (i) => fmt(xs[i]) };
+  }
+  const x = d3.scalePoint().domain(xs).range([0, plot.w]);
+  return { x, kind: 'categorical', values: xs, ticks: null, format: (v) => String(v), labelAt: (i) => xs[i] };
+}
+
 export function buildScale({
   type = 'linear',
   values = [],

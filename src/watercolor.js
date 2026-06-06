@@ -34,8 +34,10 @@ import { fbm } from './noise.js';
 // (per-pixel granulation/shading), so charts pass a content-addressed key
 // (geometry + color + seed); an identical mark on a later render reuses the
 // painted offscreen canvas instead of recomputing it — "recompute only on data
-// change". Cleared wholesale if it grows large (good enough for v0).
+// change". Bounded LRU: a Map preserves insertion order, so the oldest entry is
+// the first key; a cache hit re-inserts to mark it most-recently-used.
 const _markCache = new Map();
+const MARK_CACHE_MAX = 800;
 
 export function clearMarkCache() {
   _markCache.clear();
@@ -184,6 +186,8 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
   const ckey = cacheKey == null ? null : `${cacheKey}@${dpr}`;
   if (ckey && _markCache.has(ckey)) {
     const c = _markCache.get(ckey);
+    _markCache.delete(ckey); // LRU: re-insert as most-recently-used
+    _markCache.set(ckey, c);
     ctx.drawImage(c.oc, c.ox, c.oy, c.w, c.h);
     return;
   }
@@ -523,8 +527,11 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
   ctx.drawImage(oc, ox, oy, w, h);
 
   if (ckey) {
-    if (_markCache.size > 1000) _markCache.clear();
     _markCache.set(ckey, { oc, ox, oy, w, h });
+    // Evict the least-recently-used entries instead of wiping the whole cache.
+    while (_markCache.size > MARK_CACHE_MAX) {
+      _markCache.delete(_markCache.keys().next().value);
+    }
   }
 }
 

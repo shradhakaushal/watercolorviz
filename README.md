@@ -138,10 +138,17 @@ new Bar('#el', {
 - **Tooltips** — hover any mark to see its value + colour key; interactive out of the box on
   every chart (`tooltip: false` to disable). Chrome (axes/ticks/annotations) is drawn as crisp
   technical pen, distinct from the watercolor fills.
+  - Honours **`prefers-reduced-motion`** — reveal/hover animations are skipped automatically.
 - **Responsive** — pass `width: '100%'` (or `responsive: true`, plus optional `aspect`) and the
-  chart fits its container and re-fits on resize.
+  chart fits its container and re-fits on resize. Call `chart.destroy()` to detach observers,
+  listeners and animation frames.
 - **Accessible** — each canvas gets `role="img"` and an `aria-label` summary (override with
-  `ariaLabel`).
+  `ariaLabel`). Charts are **keyboard navigable**: focus the canvas and use the arrow keys
+  (Home/End/Escape) to move the highlight across marks; the focused datum is announced and shown
+  in the tooltip (disable with `keyboard: false`).
+- **Robust input** — malformed data (mismatched array lengths, missing keys) throws a clear
+  `watercolorviz:` error; empty or all-zero data renders a tidy empty frame; stray `NaN`/`Infinity`
+  values are sanitised rather than drawn as garbage.
 
 ## Running the demos
 
