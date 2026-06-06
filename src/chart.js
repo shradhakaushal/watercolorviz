@@ -112,31 +112,58 @@ export class Chart {
     this.paper = config.paper; // undefined → paintPaper's default cream
     // A soft humanist/handwriting font carries half the aesthetic (spec §1.6).
     this.font = config.font || '"Caveat", "Comic Sans MS", "Segoe Print", cursive';
-    this.margin = Object.assign(
-      { top: 46, right: 30, bottom: 44, left: 48 },
-      config.margin,
-    );
-    // Subclasses that draw an auto legend below the plot (multi-series bar/line)
-    // reserve extra bottom margin so the legend clears the axis labels.
-    const reserve = this.legendReserve();
-    if (reserve && !(config.margin && config.margin.bottom != null)) {
-      this.margin.bottom += reserve;
-    }
-
-    // The plot rectangle (inside the margins).
-    const m = this.margin;
-    this.plot = {
-      x0: m.left,
-      y0: m.top,
-      x1: width - m.right,
-      y1: height - m.bottom,
-      w: width - m.left - m.right,
-      h: height - m.top - m.bottom,
-    };
+    this._computeLayout();
 
     this._setupAccessibility();
     if (config.data) this.draw();
     this._setupResize();
+  }
+
+  // Derive the margin + plot rectangle from the current config and dimensions.
+  // Shared by the constructor, resize() and update() so the layout stays in one
+  // place (a chart that gains/loses a legend on update reserves space correctly).
+  _computeLayout() {
+    this.margin = Object.assign(
+      { top: 46, right: 30, bottom: 44, left: 48 },
+      this.config.margin,
+    );
+    // Subclasses that draw an auto legend below the plot (multi-series bar/line)
+    // reserve extra bottom margin so the legend clears the axis labels.
+    const reserve = this.legendReserve();
+    if (reserve && !(this.config.margin && this.config.margin.bottom != null)) {
+      this.margin.bottom += reserve;
+    }
+    const m = this.margin;
+    this.plot = {
+      x0: m.left,
+      y0: m.top,
+      x1: this.width - m.right,
+      y1: this.height - m.bottom,
+      w: this.width - m.left - m.right,
+      h: this.height - m.top - m.bottom,
+    };
+  }
+
+  // Re-render in place with new data and/or options — the supported way to
+  // change a live chart without tearing it down. Shallow-merges into config
+  // (pass a whole `data` object to replace it), recomputes layout, restarts the
+  // load animation and repaints. Returns `this` for chaining.
+  update(config = {}) {
+    if (this._destroyed) return this;
+    this.config = { ...this.config, ...config };
+    // Re-derive config-dependent state that the constructor set up.
+    this.ink = this.config.ink || INK;
+    this.paper = this.config.paper;
+    if (this.config.seed != null) this.seed = this.config.seed;
+    this._computeLayout();
+    this._paperCache = null; // paper colour may have changed
+    this._selectionProgress.clear();
+    this._hoverTarget = null;
+    this._pointer = null;
+    this._animationStart = this.now();
+    this._setupAccessibility();
+    this.draw();
+    return this;
   }
 
   // One full repaint: the chart, then annotations, then the tooltip overlay.
@@ -391,16 +418,23 @@ export class Chart {
     return { x: this.plot.x0 + this.plot.w / 2, y: this.plot.y0 + this.plot.h / 2 };
   }
 
+  // The public shape passed to onHover/onClick: the mark's index plus its label
+  // and colour. Consumers map `index` back to their own datum.
+  _markPayload(mark) {
+    return mark ? { index: mark.index, label: mark.label, color: mark.color } : null;
+  }
+
   _setHoverTarget(next) {
     if (next === this._hoverTarget) return;
     this._hoverTarget = next;
     if (this.canvas.style) this.canvas.style.cursor = next == null ? '' : 'pointer';
+    const mark = next == null ? null : this._interactiveMarks.find((m) => m.index === next);
     // Announce the focused datum to assistive tech (restore the summary when
     // nothing is focused).
     if (typeof this.canvas.setAttribute === 'function') {
-      const mark = next == null ? null : this._interactiveMarks.find((m) => m.index === next);
       this.canvas.setAttribute('aria-label', mark && mark.label ? String(mark.label) : this.ariaLabel());
     }
+    if (typeof this.config.onHover === 'function') this.config.onHover(this._markPayload(mark));
     this.startSelectionAnimation();
   }
 
@@ -417,6 +451,14 @@ export class Chart {
       case 'Home': cur = 0; break;
       case 'End': cur = order.length - 1; break;
       case 'Escape': this._setHoverTarget(null); return;
+      case 'Enter': case ' ': {
+        // Activate the focused mark (keyboard equivalent of a click).
+        if (this._hoverTarget != null && typeof this.config.onClick === 'function') {
+          e.preventDefault();
+          this.config.onClick(this._markPayload(marks.find((m) => m.index === this._hoverTarget)), e);
+        }
+        return;
+      }
       default: return;
     }
     e.preventDefault();
@@ -434,8 +476,16 @@ export class Chart {
     // chart is torn down in an SPA).
     this._onPointerMove = (event) => this._setHoverTarget(this._hitTest(event));
     this._onPointerLeave = () => this._setHoverTarget(null);
+    // Click → onClick(payload, event) for the mark under the pointer.
+    this._onClick = (event) => {
+      if (typeof this.config.onClick !== 'function') return;
+      const idx = this._hitTest(event);
+      if (idx == null) return;
+      this.config.onClick(this._markPayload(this._interactiveMarks.find((m) => m.index === idx)), event);
+    };
     this.canvas.addEventListener('pointermove', this._onPointerMove);
     this.canvas.addEventListener('pointerleave', this._onPointerLeave);
+    this.canvas.addEventListener('click', this._onClick);
 
     // Keyboard access: make the canvas focusable and navigate marks with the
     // arrow keys (disable with `keyboard: false`).
@@ -577,15 +627,21 @@ export class Chart {
   }
 
   // Tooltip overlay: when a mark is hovered, show its `label` near the pointer.
-  // Disable with `tooltip: false`. Marks opt in by carrying a `label` string.
+  // Disable with `tooltip: false`. Customise the text with a `tooltipFormat`
+  // function `(payload) => string` (may return multi-line text or '' to hide).
+  // Marks opt in by carrying a `label` string.
   drawTooltip() {
     if (this.config.tooltip === false) return;
     if (this._hoverTarget == null || !this._pointer) return;
     const mark = this._interactiveMarks.find((m) => m.index === this._hoverTarget);
-    if (!mark || !mark.label) return;
+    if (!mark) return;
+    const text = typeof this.config.tooltipFormat === 'function'
+      ? this.config.tooltipFormat(this._markPayload(mark))
+      : mark.label;
+    if (text == null || text === '') return;
 
     const ctx = this.ctx;
-    const lines = String(mark.label).split('\n');
+    const lines = String(text).split('\n');
     const size = 13;
     const lh = size + 4;
     const pad = 8;
@@ -662,12 +718,7 @@ export class Chart {
     }
     this.ctx.scale(dpr, dpr);
     setRenderDpr(dpr);
-    const m = this.margin;
-    this.plot = {
-      x0: m.left, y0: m.top,
-      x1: width - m.right, y1: height - m.bottom,
-      w: width - m.left - m.right, h: height - m.top - m.bottom,
-    };
+    this._computeLayout();
     // Old-size marks become stale but are keyed by geometry, so they simply
     // stop being hit and age out of the LRU — no global wipe (which would also
     // evict every OTHER chart's cached marks on the page). The paper cache
@@ -688,9 +739,21 @@ export class Chart {
     this._hoverRaf = null;
     if (this._onPointerMove) this.canvas.removeEventListener('pointermove', this._onPointerMove);
     if (this._onPointerLeave) this.canvas.removeEventListener('pointerleave', this._onPointerLeave);
+    if (this._onClick) this.canvas.removeEventListener('click', this._onClick);
     if (this._onKeyDown) this.canvas.removeEventListener('keydown', this._onKeyDown);
     if (this._onFocus) this.canvas.removeEventListener('focus', this._onFocus);
     if (this._onBlur) this.canvas.removeEventListener('blur', this._onBlur);
+  }
+
+  // Export the rendered chart as a data URL (default PNG). A thin wrapper over
+  // the backing canvas — handy for "download" / embedding in reports.
+  toDataURL(type = 'image/png', quality) {
+    return this.canvas.toDataURL(type, quality);
+  }
+
+  // Export as a Blob via callback (browser canvases only).
+  toBlob(callback, type = 'image/png', quality) {
+    return this.canvas.toBlob(callback, type, quality);
   }
 
   // Subclasses override.

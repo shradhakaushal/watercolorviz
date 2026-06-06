@@ -132,6 +132,34 @@ new Bar('#el', {
 });
 ```
 
+## Working with a chart instance
+
+A chart is a live object — update it, listen to it, export it, and tear it down:
+
+```js
+const chart = new Bar('#el', {
+  data: { labels: ['A', 'B', 'C'], values: [3, 7, 5] },
+  onClick: (mark, event) => console.log('clicked', mark.index, mark.label),
+  onHover: (mark) => setHighlighted(mark?.index ?? null), // null when nothing is hovered
+  tooltipFormat: (mark) => `${mark.label}\nclick to drill in`,
+});
+
+// Re-render in place with new data/options — no teardown, restarts the reveal.
+chart.update({ data: { labels: ['A', 'B', 'C'], values: [9, 2, 6] } });
+
+// Export the current frame.
+const pngUrl = chart.toDataURL();          // → "data:image/png;base64,…"
+chart.toBlob((blob) => download(blob));    // browser
+
+// Remove it cleanly (detaches listeners, observers and animation frames).
+chart.destroy();
+```
+
+- **`update(config)`** shallow-merges into the existing config (pass a whole `data` object to replace the data) and repaints. The supported way to drive a chart from a framework or live feed.
+- **`onClick(mark, event)`** / **`onHover(mark|null)`** give you the mark's `{ index, label, color }`; map `index` back to your own data. Clicks also fire from the keyboard (Enter/Space on the focused mark).
+- **`tooltipFormat(mark)`** returns the tooltip string (multi-line ok; return `''` to suppress).
+- **`toDataURL(type?, quality?)`** / **`toBlob(cb, type?, quality?)`** export the canvas.
+
 ## Interactive, responsive, accessible
 - **Hi-DPI** — canvases render at `devicePixelRatio`, so text/ink/marks are crisp on retina.
 - **Animations** — marks reveal in on load (disable with `animation: false`).

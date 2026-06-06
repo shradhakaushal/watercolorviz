@@ -22,6 +22,14 @@ export interface LegendItem {
   color: ColorString;
 }
 
+/** The datum passed to onClick / onHover / tooltipFormat. Map `index` back to
+ *  your own data. */
+export interface MarkPayload {
+  index: number;
+  label?: string;
+  color?: ColorString;
+}
+
 // --- Annotations (available on every chart via `annotations`) ----------------
 
 export type AnnotationPoint = [number, number] | [string, string];
@@ -104,6 +112,12 @@ export interface BaseConfig {
   interactive?: boolean;
   selection?: boolean;
   tooltip?: boolean;
+  /** Customise tooltip text; return '' to suppress it for a mark. */
+  tooltipFormat?: (mark: MarkPayload) => string;
+  /** Called when a mark is clicked (or activated via Enter/Space). */
+  onClick?: (mark: MarkPayload, event: MouseEvent | KeyboardEvent) => void;
+  /** Called when the hovered/focused mark changes (null when none). */
+  onHover?: (mark: MarkPayload | null) => void;
   /** Keyboard navigation of marks (arrow keys). Default true. */
   keyboard?: boolean;
   /** Override the generated screen-reader summary. */
@@ -290,10 +304,16 @@ export class Chart {
   readonly ctx: CanvasRenderingContext2D;
   /** Repaint the chart, annotations and tooltip. */
   draw(): void;
+  /** Re-render in place with new data/options (shallow-merged into config). */
+  update(config?: Record<string, unknown>): this;
   /** Resize to new logical dimensions and repaint. */
   resize(width: number, height: number): void;
   /** Detach observers, listeners and pending animation frames. */
   destroy(): void;
+  /** Export the rendered chart as a data URL (default PNG). */
+  toDataURL(type?: string, quality?: number): string;
+  /** Export as a Blob via callback (browser canvases only). */
+  toBlob(callback: (blob: Blob | null) => void, type?: string, quality?: number): void;
   render(): void;
 }
 
