@@ -5,20 +5,29 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
+import { requireArray, requireSameLength, cleanNumbers } from '../validate.js';
 import { paintWedge, paintWedgeSelection, wedgePolygon } from './shapes.js';
 
 export class Pie extends Chart {
   render() {
     const { ctx, plot, seed, config, ink } = this;
-    const { labels, values } = config.data;
+    const labels = requireArray(config.data.labels, 'data.labels', { allowEmpty: true });
+    const values = cleanNumbers(requireArray(config.data.values, 'data.values', { allowEmpty: true }));
     this.paintBackground();
+
+    const total = d3.sum(values);
+    // No slices (empty) or every value zero → nothing to draw a wedge from.
+    if (values.length === 0 || total <= 0) {
+      this.emptyState();
+      return;
+    }
+    requireSameLength({ 'data.labels': labels, 'data.values': values });
 
     const cx = plot.x0 + plot.w / 2;
     const cy = plot.y0 + plot.h / 2;
     const r1 = Math.min(plot.w, plot.h) / 2 - 6;
     const r0 = (config.innerRadius || 0) * r1;
 
-    const total = d3.sum(values);
     let a = -Math.PI / 2; // start at 12 o'clock
     const marks = [];
     values.forEach((v, i) => {

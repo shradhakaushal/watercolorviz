@@ -1,20 +1,46 @@
 {
   "name": "watercolorviz",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Watercolor-style data visualizations for the browser.",
   "type": "module",
   "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "src",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "dev": "./scripts/dev.sh"
+    "dev": "./scripts/dev.sh",
+    "test": "node --test"
   },
   "keywords": [
     "dataviz",
     "watercolor",
     "charts",
     "canvas",
-    "d3"
+    "d3",
+    "visualization"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shradhakaushal/watercolorviz.git"
+  },
+  "homepage": "https://github.com/shradhakaushal/watercolorviz#readme",
+  "bugs": {
+    "url": "https://github.com/shradhakaushal/watercolorviz/issues"
+  },
   "peerDependencies": {
     "d3": "^7"
   },

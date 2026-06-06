@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # node-canvas (a devDependency, used by the test harness) needs Cairo/Pango
+      # system libraries when a prebuilt binary isn't available.
+      - name: Install canvas system deps
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+      # The lockfile is intentionally gitignored, so use `npm install` (not `npm ci`).
+      - run: npm install --no-audit --no-fund
+      - run: npm test

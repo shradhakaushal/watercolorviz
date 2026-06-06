@@ -15,29 +15,9 @@ import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, tick } from '../axes.js';
 import { tickFormat } from '../scale.js';
+import { normalizeSeries, isMultiSeries } from '../series.js';
+import { requireArray, requireSameLength } from '../validate.js';
 import { paintRectSelection, paintRectWashReveal } from './shapes.js';
-
-// Normalise into a list of { name, values }. A flat `values` array is one
-// (unnamed) series; `series: {…}` or a nested `values: [[…]]` are grouped.
-function normalizeSeries(data) {
-  if (data.series && !Array.isArray(data.series)) {
-    return Object.entries(data.series).map(([name, values]) => ({ name, values }));
-  }
-  const v = data.values;
-  if (Array.isArray(v) && Array.isArray(v[0])) {
-    const names = data.names || v.map((_, i) => `series ${i + 1}`);
-    return v.map((values, i) => ({ name: names[i] ?? `series ${i + 1}`, values }));
-  }
-  return [{ name: data.name || '', values: v }];
-}
-
-// True when the data describes more than one series (→ an auto legend).
-function isMultiSeries(data = {}) {
-  const seriesObj = data.series && !Array.isArray(data.series);
-  const nested = (Array.isArray(data.values) && Array.isArray(data.values[0])) ||
-    (Array.isArray(data.y) && Array.isArray(data.y[0]));
-  return Boolean(seriesObj || nested);
-}
 
 export class Bar extends Chart {
   legendReserve() {
@@ -46,12 +26,20 @@ export class Bar extends Chart {
   }
 
   render() {
+    const labels = requireArray(this.config.data.labels, 'data.labels', { allowEmpty: true });
     const series = normalizeSeries(this.config.data);
+    if (labels.length === 0 || series.every((sr) => sr.values.length === 0)) {
+      this.emptyState();
+      return;
+    }
+    for (const sr of series) requireSameLength({ 'data.labels': labels, [`series "${sr.name}"`]: sr.values });
+
     if (series.length > 1) {
       return this.config.horizontal ? this.renderGroupedHorizontal(series) : this.renderGroupedVertical(series);
     }
-    if (this.config.horizontal) return this.renderHorizontal();
-    return this.renderVertical();
+    const values = series[0].values; // sanitised (non-finite → 0)
+    if (this.config.horizontal) return this.renderHorizontal(values);
+    return this.renderVertical(values);
   }
 
   renderGroupedVertical(series) {
@@ -172,9 +160,9 @@ export class Bar extends Chart {
     this.scheduleLoadAnimation(marks.length);
   }
 
-  renderVertical() {
+  renderVertical(values = this.config.data.values) {
     const { ctx, plot, seed, config, ink } = this;
-    const { labels, values } = config.data;
+    const { labels } = config.data;
     this.paintBackground();
 
     const x = d3.scaleBand().domain(labels).range([0, plot.w]).padding(0.36);
@@ -231,9 +219,9 @@ export class Bar extends Chart {
     this.scheduleLoadAnimation(marks.length);
   }
 
-  renderHorizontal() {
+  renderHorizontal(values = this.config.data.values) {
     const { ctx, plot, seed, config, ink } = this;
-    const { labels, values } = config.data;
+    const { labels } = config.data;
     this.paintBackground();
 
     const y = d3.scaleBand().domain(labels).range([0, plot.h]).padding(0.36);

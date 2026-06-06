@@ -7,25 +7,12 @@
 // Each series gets its own colour, an entry in the auto legend, and its own
 // markers/tooltips ("name — x: y"). Single-series usage is unchanged.
 
-import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { buildScale, tickFormat } from '../scale.js';
+import { buildScale, resolveXScale } from '../scale.js';
+import { normalizeSeries, isMultiSeries } from '../series.js';
+import { requireArray, requireSameLength } from '../validate.js';
 import { paintDot, paintDotSelection } from './shapes.js';
-
-// Normalise the data into a list of { name, values }. A flat `y` array is one
-// (unnamed) series; `series: {…}` or a nested `y: [[…]]` are multi-series.
-function normalizeSeries(data) {
-  if (data.series && !Array.isArray(data.series)) {
-    return Object.entries(data.series).map(([name, values]) => ({ name, values }));
-  }
-  const y = data.y;
-  if (Array.isArray(y) && Array.isArray(y[0])) {
-    const names = data.names || y.map((_, i) => `series ${i + 1}`);
-    return y.map((values, i) => ({ name: names[i] ?? `series ${i + 1}`, values }));
-  }
-  return [{ name: data.name || '', values: y }];
-}
 
 function partialPolyline(points, progress) {
   const p = Math.max(0, Math.min(1, progress));
@@ -59,13 +46,6 @@ function partialPolyline(points, progress) {
   return out;
 }
 
-// True when the data describes more than one series (→ an auto legend).
-function isMultiSeries(data = {}) {
-  const seriesObj = data.series && !Array.isArray(data.series);
-  const nested = Array.isArray(data.y) && Array.isArray(data.y[0]);
-  return Boolean(seriesObj || nested);
-}
-
 export class Line extends Chart {
   legendReserve() {
     if (this.config.legend === false) return 0;
@@ -74,10 +54,17 @@ export class Line extends Chart {
 
   render() {
     const { ctx, plot, seed, config, ink } = this;
-    const xs = config.data.x;
+    const xs = requireArray(config.data.x, 'data.x', { allowEmpty: true });
     this.paintBackground();
 
     const series = normalizeSeries(config.data);
+    if (xs.length === 0 || series.every((sr) => sr.values.length === 0)) {
+      this.emptyState();
+      return;
+    }
+    // x and every series must line up point-for-point.
+    for (const sr of series) requireSameLength({ 'data.x': xs, [`series "${sr.name}"`]: sr.values });
+
     const multi = series.length > 1;
     const S = series.length;
     const N = xs.length;
@@ -86,26 +73,11 @@ export class Line extends Chart {
     const seriesColor = (s) => this.colorFor(s);
     const markerColor = (s, i) => (multi ? this.colorFor(s) : this.colorFor(i));
 
-    // x can be a time axis (Date values or xScale:'time'), a numeric linear
-    // axis, or categorical (scalePoint over the raw labels).
-    const timeX = config.xScale === 'time' || xs[0] instanceof Date;
-    const xvals = timeX ? xs.map((d) => (d instanceof Date ? d : new Date(d))) : xs;
-    const numericX = !timeX && typeof xs[0] === 'number';
-    let x;
-    let xi = null;
-    if (timeX) {
-      xi = buildScale({ type: 'time', values: xvals, range: [0, plot.w], tickCount: config.xTicks || 6, nice: config.xNice !== false });
-      x = xi.scale;
-    } else if (numericX) {
-      x = d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w]);
-    } else {
-      x = d3.scalePoint().domain(xs).range([0, plot.w]);
-    }
-    const tipFmt = timeX ? d3.timeFormat(config.timeFormat || '%b %e, %Y') : null;
-    // `xFormat`/`yFormat` accept a d3-format string ("$,.0f", ".0%", "~s") or a
-    // function; they style the numeric axis tick labels (and numeric tooltips).
-    const xfmt = tickFormat(config.xFormat);
-    const xLabel = (i) => (timeX ? tipFmt(xvals[i]) : numericX ? xfmt(xs[i]) : xs[i]);
+    // x axis (time / numeric / categorical) resolved by the shared helper.
+    const X = resolveXScale({ xs, plot, config });
+    const x = X.x;
+    const xvals = X.values;
+    const xLabel = (i) => X.labelAt(i);
     const allY = series.flatMap((sr) => sr.values);
     // `yScale: 'log'` opts into a log value axis (positive data only); linear
     // (with a zero baseline) is the default.
@@ -180,21 +152,15 @@ export class Line extends Chart {
       const lab = yi.format(t);
       if (lab) this.text(lab, plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
-    if (timeX) {
-      for (const t of xi.ticks) {
+    if (X.kind === 'categorical') {
+      xs.forEach((xv) => this.text(String(xv), plot.x0 + x(xv), plot.y1 + 16, { size: 12 }));
+    } else {
+      for (const t of X.ticks) {
         const tx = plot.x0 + x(t);
         tick(ctx, tx, plot.y1, true, { color: ink });
-        const lab = xi.format(t);
+        const lab = X.format(t);
         if (lab) this.text(lab, tx, plot.y1 + 16, { size: 12 });
       }
-    } else if (numericX) {
-      for (const t of x.ticks(6)) {
-        const tx = plot.x0 + x(t);
-        tick(ctx, tx, plot.y1, true, { color: ink });
-        this.text(xfmt(t), tx, plot.y1 + 16, { size: 12 });
-      }
-    } else {
-      xs.forEach((xv) => this.text(String(xv), plot.x0 + x(xv), plot.y1 + 16, { size: 12 }));
     }
 
     if (multi) {

@@ -7,15 +7,22 @@ import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { tick } from '../axes.js';
 import { buildScale } from '../scale.js';
+import { requireArray, requireSameLength, cleanNumbers } from '../validate.js';
 import { paintDot, paintDotSelection } from './shapes.js';
 
 export class Scatter extends Chart {
   render() {
     const { ctx, plot, seed, config, ink } = this;
-    const xs = config.data.x;
-    const ys = config.data.y;
+    const xs = cleanNumbers(requireArray(config.data.x, 'data.x', { allowEmpty: true }));
+    const ys = cleanNumbers(requireArray(config.data.y, 'data.y', { allowEmpty: true }));
     const rs = config.data.r; // optional → bubble
     this.paintBackground();
+
+    if (xs.length === 0 || ys.length === 0) {
+      this.emptyState();
+      return;
+    }
+    requireSameLength(rs ? { 'data.x': xs, 'data.y': ys, 'data.r': rs } : { 'data.x': xs, 'data.y': ys });
 
     // `xScale`/`yScale: 'log'` opt into log axes (positive data only).
     const xi = buildScale({ type: config.xScale, values: xs, range: [0, plot.w], tickCount: 6, format: config.xFormat });

@@ -3,37 +3,32 @@
 // A soft grainy wash under the data curve, with a line-and-wash ink contour on
 // top — the classic "line and wash" look. Accepts numeric or categorical x.
 
-import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { buildScale, tickFormat } from '../scale.js';
+import { buildScale, resolveXScale } from '../scale.js';
+import { requireArray, requireSameLength, cleanNumbers } from '../validate.js';
 import { areaPolygon, paintAreaWash, paintPolygonSelection, withRevealClip } from './shapes.js';
 
 export class Area extends Chart {
   render() {
     const { ctx, plot, seed, config, ink } = this;
-    const xs = config.data.x;
-    const ys = config.data.y;
+    const xs = requireArray(config.data.x, 'data.x', { allowEmpty: true });
+    const ys = cleanNumbers(requireArray(config.data.y, 'data.y', { allowEmpty: true }));
     this.paintBackground();
 
-    // x can be time (Date values or xScale:'time'), numeric or categorical;
-    // y is linear (zero baseline) by default, or yScale:'log'.
-    const timeX = config.xScale === 'time' || xs[0] instanceof Date;
-    const xvals = timeX ? xs.map((d) => (d instanceof Date ? d : new Date(d))) : xs;
-    const numericX = !timeX && typeof xs[0] === 'number';
-    let x;
-    let xi = null;
-    if (timeX) {
-      xi = buildScale({ type: 'time', values: xvals, range: [0, plot.w], tickCount: config.xTicks || 6, nice: config.xNice !== false });
-      x = xi.scale;
-    } else if (numericX) {
-      x = d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w]);
-    } else {
-      x = d3.scalePoint().domain(xs).range([0, plot.w]);
+    if (xs.length === 0 || ys.length === 0) {
+      this.emptyState();
+      return;
     }
+    requireSameLength({ 'data.x': xs, 'data.y': ys });
+
+    // x axis (time / numeric / categorical); y is linear (zero baseline) by
+    // default, or yScale:'log'.
+    const X = resolveXScale({ xs, plot, config });
+    const x = X.x;
+    const xvals = X.values;
     const yi = buildScale({ type: config.yScale, values: ys, range: [plot.h, 0], includeZero: true, tickCount: 5, format: config.yFormat });
     const y = yi.scale;
-    const xfmt = tickFormat(config.xFormat);
     this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     if (config.grid !== false) {
@@ -70,21 +65,15 @@ export class Area extends Chart {
       const lab = yi.format(t);
       if (lab) this.text(lab, plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
-    if (timeX) {
-      for (const t of xi.ticks) {
+    if (X.kind === 'categorical') {
+      xs.forEach((xv) => this.text(String(xv), plot.x0 + x(xv), plot.y1 + 16, { size: 12 }));
+    } else {
+      for (const t of X.ticks) {
         const tx = plot.x0 + x(t);
         tick(ctx, tx, plot.y1, true, { color: ink });
-        const lab = xi.format(t);
+        const lab = X.format(t);
         if (lab) this.text(lab, tx, plot.y1 + 16, { size: 12 });
       }
-    } else if (numericX) {
-      for (const t of x.ticks(6)) {
-        const tx = plot.x0 + x(t);
-        tick(ctx, tx, plot.y1, true, { color: ink });
-        this.text(xfmt(t), tx, plot.y1 + 16, { size: 12 });
-      }
-    } else {
-      xs.forEach((xv) => this.text(String(xv), plot.x0 + x(xv), plot.y1 + 16, { size: 12 }));
     }
 
     this.drawAxisLines();
