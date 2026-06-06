@@ -6,8 +6,8 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
+import { paintRectSelection, paintRectWashReveal } from './shapes.js';
 import { hexToRgb } from '../palette.js';
-import { paintRectWash } from './shapes.js';
 
 export class Heatmap extends Chart {
   constructor(el, config = {}) {
@@ -32,6 +32,7 @@ export class Heatmap extends Chart {
     // maps to pigment density.
     const color = config.color || (config.colors && config.colors[0]) || '#3f7fb0';
 
+    const marks = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const v = values[r][c];
@@ -40,15 +41,35 @@ export class Heatmap extends Chart {
         const cy = plot.y0 + r * ch + gap / 2;
         // Value → pigment density; keep a floor so empty cells still read.
         const intensity = 0.3 + t * 1.2;
-        paintRectWash(ctx, cx, cy, cw - gap, ch - gap, {
+        paintRectWashReveal(ctx, cx, cy, cw - gap, ch - gap, {
           color,
           seed: seed + r * 31 + c * 7,
           intensity,
           outline: false,
           ink: this.ink,
+          progress: this.loadProgress(r * cols + c),
+          reveal: 'center',
+        });
+        marks.push({
+          index: r * cols + c,
+          x: cx,
+          y: cy,
+          w: cw - gap,
+          h: ch - gap,
+          color,
+          seed: seed + r * 31 + c * 7,
         });
       }
     }
+
+    marks.forEach((mark) => {
+      paintRectSelection(ctx, mark.x, mark.y, mark.w, mark.h, {
+        color: mark.color,
+        seed: mark.seed,
+        progress: this.selectionProgress(mark.index),
+      });
+    });
+    this.setInteractiveMarks(marks);
 
     xLabels.forEach((lab, c) => {
       this.text(lab, plot.x0 + (c + 0.5) * cw, plot.y1 + 16, { size: 13 });
@@ -80,5 +101,6 @@ export class Heatmap extends Chart {
     }
 
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(marks.length);
   }
 }

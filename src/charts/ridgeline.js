@@ -7,7 +7,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, tick } from '../axes.js';
-import { paintAreaWash } from './shapes.js';
+import { areaPolygon, paintAreaWash, paintPolygonSelection, withRevealClip } from './shapes.js';
 
 export class Ridgeline extends Chart {
   render() {
@@ -24,17 +24,42 @@ export class Ridgeline extends Chart {
 
     const extend = { x0: plot.x0, x1: plot.x1, ov: 18 };
     const tops = [];
+    const marks = [];
     // Back-to-front: top row first so each lower row paints over the one above.
     // Clipped to the plot so the sides/baseline stay clean despite edge wobble.
     this.withPlotClip(() => {
       for (let r = 0; r < rows; r++) {
         const baseY = plot.y0 + (r + 1) * rowGap;
         const top = xs.map((xv, i) => [plot.x0 + x(xv), baseY - (series[r][i] / maxV) * amp]);
+        const reveal = this.loadProgress(r);
         tops.push({ top, baseY });
-        paintAreaWash(ctx, top, baseY, { color: this.colorFor(r), seed: seed + r * 17, intensity: 0.9, extend });
-        inkPath(ctx, top, { seed: seed + r * 17, width: 1.7, opacity: 0.7, color: ink });
+        const color = this.colorFor(r);
+        withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, reveal, () => {
+          paintAreaWash(ctx, top, baseY, { color, seed: seed + r * 17, intensity: 0.9, extend });
+        });
+        marks.push({
+          index: r,
+          points: areaPolygon(top, baseY),
+          top,
+          color,
+          seed: seed + r * 17,
+        });
       }
+      marks.forEach((mark) => {
+        paintPolygonSelection(ctx, mark.points, {
+          color: mark.color,
+          outlinePoints: mark.top,
+          closedOutline: false,
+          progress: this.selectionProgress(mark.index),
+        });
+      });
+      marks.forEach((mark) => {
+        withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, this.loadProgress(mark.index), () => {
+          inkPath(ctx, mark.top, { seed: mark.seed, width: 1.7, opacity: 0.7, color: ink });
+        });
+      });
     });
+    this.setInteractiveMarks(marks);
     // Row labels (left of the axis, so outside the clip).
     tops.forEach(({ baseY }, r) => this.text(labels[r], plot.x0 - 8, baseY - 4, { size: 13, align: 'right' }));
 
@@ -47,5 +72,6 @@ export class Ridgeline extends Chart {
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
     if (config.xLabel) this.text(config.xLabel, plot.x0 + plot.w / 2, this.height - 8, { size: 14 });
+    this.scheduleLoadAnimation(marks.length);
   }
 }

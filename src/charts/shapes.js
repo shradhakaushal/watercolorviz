@@ -4,6 +4,7 @@
 // line-and-wash ink outline.
 
 import { paintPolygon, regularPolygon } from '../watercolor.js';
+import { hexToRgb } from '../palette.js';
 
 // A rectangle as a closed polygon with subdivided edges, so the engine's gentle
 // edge wobble has points to act on (4 corners alone round into a blob).
@@ -121,6 +122,20 @@ export function paintBandWash(ctx, top, bottom, opts = {}) {
   paintPolygon(ctx, bandPolygon(top, bottom, extend), areaFillOpts(color, seed, intensity));
 }
 
+export function withRevealClip(ctx, x0, y0, w, h, progress, fn) {
+  const p = Math.max(0, Math.min(1, progress));
+  if (p <= 0) return;
+  ctx.save();
+  if (p < 0.995) {
+    ctx.beginPath();
+    ctx.rect(x0, y0, w * p, h);
+    ctx.clip();
+    ctx.globalAlpha = 0.25 + p * 0.75;
+  }
+  fn();
+  ctx.restore();
+}
+
 // An arbitrary closed/filled polygon as a soft grainy wash (sankey flows etc.).
 export function paintFillWash(ctx, points, opts = {}) {
   const { color, seed = 1, intensity = 0.9, ink, outline = false, bleed } = opts;
@@ -198,4 +213,171 @@ export function paintRectWash(ctx, x, y, w, h, opts = {}) {
     paperScale: 0.3, // finer tooth → fine even speckle, not soft blobs
     cacheKey,
   });
+}
+
+export function paintRectWashReveal(ctx, x, y, w, h, opts = {}) {
+  const { progress = 1, reveal = 'up' } = opts;
+  const p = Math.max(0, Math.min(1, progress));
+  if (p <= 0) return;
+  if (p >= 0.995) {
+    paintRectWash(ctx, x, y, w, h, opts);
+    return;
+  }
+
+  let cx = x;
+  let cy = y;
+  let cw = w;
+  let ch = h;
+  if (reveal === 'right') {
+    cw = w * p;
+  } else if (reveal === 'center') {
+    cw = w * (0.15 + p * 0.85);
+    ch = h * (0.15 + p * 0.85);
+    cx = x + (w - cw) / 2;
+    cy = y + (h - ch) / 2;
+  } else {
+    ch = h * p;
+    cy = y + h - ch;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cx, cy, cw, ch);
+  ctx.clip();
+  ctx.globalAlpha = 0.28 + p * 0.72;
+  paintRectWash(ctx, x, y, w, h, opts);
+  ctx.restore();
+}
+
+function traceSketchRect(ctx, x, y, w, h, seed, jitter = 1.2) {
+  const pts = rectPoints(x, y, w, h, 7);
+  const n = pts.length;
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => {
+    const wave = Math.sin((i + 1) * 12.9898 + seed * 78.233) * 43758.5453;
+    const offset = (wave - Math.floor(wave) - 0.5) * jitter;
+    const prev = pts[(i - 1 + n) % n];
+    const next = pts[(i + 1) % n];
+    let nx = -(next[1] - prev[1]);
+    let ny = next[0] - prev[0];
+    const len = Math.hypot(nx, ny) || 1;
+    nx /= len;
+    ny /= len;
+    const qx = px + nx * offset;
+    const qy = py + ny * offset;
+    if (i === 0) ctx.moveTo(qx, qy);
+    else ctx.lineTo(qx, qy);
+  });
+  ctx.closePath();
+}
+
+function tracePoints(ctx, points) {
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+  ctx.closePath();
+}
+
+function traceOpenPoints(ctx, points) {
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+}
+
+function deepPigment(color) {
+  const [r, g, b] = hexToRgb(color);
+  const max = Math.max(r, g, b);
+  return {
+    rgb: [r, g, b],
+    deep: [
+      Math.max(0, Math.round(r - (max - r) * 0.45)),
+      Math.max(0, Math.round(g - (max - g) * 0.45)),
+      Math.max(0, Math.round(b - (max - b) * 0.45)),
+    ],
+  };
+}
+
+// Animated in-chart selection for rectangular marks. It deepens the chosen wash
+// and redraws the edge directly on the mark so selection belongs to the bar
+// instead of reading as a separate frame around it.
+export function paintRectSelection(ctx, x, y, w, h, opts = {}) {
+  const { color = '#3f7fb0', seed = 1, progress = 0 } = opts;
+  if (progress <= 0.01) return;
+
+  const p = 1 - Math.pow(1 - progress, 3);
+  const { rgb: [r, g, b], deep } = deepPigment(color);
+  const perimeter = 2 * (w + h);
+
+  ctx.save();
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.2 * p})`;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.16 * p})`;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+
+  ctx.save();
+  traceSketchRect(ctx, x, y, w, h, seed + 41, 1.2);
+  ctx.strokeStyle = `rgba(${r},${g},${b},${0.22 * p})`;
+  ctx.lineWidth = 4 + p * 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  traceSketchRect(ctx, x, y, w, h, seed + 11, 0.8);
+  ctx.setLineDash([Math.max(1, perimeter * p), perimeter]);
+  ctx.lineDashOffset = -perimeter * 0.04;
+  ctx.strokeStyle = `rgba(59,51,43,${0.78 * p})`;
+  ctx.lineWidth = 1.4 + p * 1.2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function paintPolygonSelection(ctx, points, opts = {}) {
+  const { color = '#3f7fb0', progress = 0, outlinePoints = points, closedOutline = true } = opts;
+  if (progress <= 0.01 || !points || points.length < 3) return;
+
+  const p = 1 - Math.pow(1 - progress, 3);
+  const { rgb: [r, g, b], deep } = deepPigment(color);
+
+  ctx.save();
+  tracePoints(ctx, points);
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.18 * p})`;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  tracePoints(ctx, points);
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.14 * p})`;
+  ctx.fill();
+  ctx.restore();
+
+  if (outlinePoints && outlinePoints.length > 1) {
+    const traceOutline = closedOutline ? tracePoints : traceOpenPoints;
+    ctx.save();
+    traceOutline(ctx, outlinePoints);
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.24 * p})`;
+    ctx.lineWidth = 5 + p * 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    traceOutline(ctx, outlinePoints);
+    ctx.strokeStyle = `rgba(59,51,43,${0.54 * p})`;
+    ctx.lineWidth = 1.2 + p * 0.9;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
 }

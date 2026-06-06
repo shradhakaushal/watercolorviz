@@ -12,6 +12,10 @@ export { Chart } from './chart.js';
 export {
   rectPoints,
   paintRectWash,
+  paintRectWashReveal,
+  paintRectSelection,
+  paintPolygonSelection,
+  withRevealClip,
   areaPolygon,
   bandPolygon,
   paintAreaWash,

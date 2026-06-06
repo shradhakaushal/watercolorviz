@@ -6,7 +6,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { paintAreaWash } from './shapes.js';
+import { areaPolygon, paintAreaWash, paintPolygonSelection, withRevealClip } from './shapes.js';
 
 export class Area extends Chart {
   render() {
@@ -32,10 +32,23 @@ export class Area extends Chart {
     const top = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(ys[i])]);
     const color = this.colorFor(0);
     const extend = { x0: plot.x0, x1: plot.x1, ov: 18 };
+    const selectionPoints = areaPolygon(top, plot.y1);
+    const reveal = this.loadProgress(0);
     this.withPlotClip(() => {
-      paintAreaWash(ctx, top, plot.y1, { color, seed, intensity: config.intensity ?? 0.95, extend });
+      withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, reveal, () => {
+        paintAreaWash(ctx, top, plot.y1, { color, seed, intensity: config.intensity ?? 0.95, extend });
+      });
+      paintPolygonSelection(ctx, selectionPoints, {
+        color,
+        outlinePoints: top,
+        closedOutline: false,
+        progress: this.selectionProgress(0),
+      });
     });
-    inkPath(ctx, top, { seed, width: 1.9, color: ink });
+    this.setInteractiveMarks([{ index: 0, points: selectionPoints }]);
+    withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, reveal, () => {
+      inkPath(ctx, top, { seed, width: 1.9, color: ink });
+    });
 
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
@@ -54,5 +67,6 @@ export class Area extends Chart {
 
     this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(1);
   }
 }

@@ -8,7 +8,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, tick } from '../axes.js';
-import { paintRectWash } from './shapes.js';
+import { paintRectSelection, paintRectWashReveal } from './shapes.js';
 
 export class Bar extends Chart {
   render() {
@@ -32,14 +32,32 @@ export class Bar extends Chart {
       }
     }
 
+    const marks = [];
     values.forEach((v, i) => {
       const bw = x.bandwidth();
       const bx = plot.x0 + x(labels[i]);
       const top = plot.y0 + y(v);
       const bh = plot.y1 - top;
       if (bh <= 0) return;
-      paintRectWash(ctx, bx, top, bw, bh, { color: this.colorFor(i), seed: seed + i * 13, ink });
+      const color = this.colorFor(i);
+      paintRectWashReveal(ctx, bx, top, bw, bh, {
+        color,
+        seed: seed + i * 13,
+        ink,
+        progress: this.loadProgress(i),
+        reveal: 'up',
+      });
+      marks.push({ index: i, x: bx, y: top, w: bw, h: bh, color, seed: seed + i * 13 });
     });
+
+    marks.forEach((mark) => {
+      paintRectSelection(ctx, mark.x, mark.y, mark.w, mark.h, {
+        color: mark.color,
+        seed: mark.seed,
+        progress: this.selectionProgress(mark.index),
+      });
+    });
+    this.setInteractiveMarks(marks);
 
     // y ticks + numbers, x category labels
     for (const t of y.ticks(5)) {
@@ -53,6 +71,7 @@ export class Bar extends Chart {
 
     this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(marks.length);
   }
 
   renderHorizontal() {
@@ -71,13 +90,31 @@ export class Bar extends Chart {
       }
     }
 
+    const marks = [];
     values.forEach((v, i) => {
       const bh = y.bandwidth();
       const by = plot.y0 + y(labels[i]);
       const bw = x(v);
       if (bw <= 0) return;
-      paintRectWash(ctx, plot.x0, by, bw, bh, { color: this.colorFor(i), seed: seed + i * 13, ink });
+      const color = this.colorFor(i);
+      paintRectWashReveal(ctx, plot.x0, by, bw, bh, {
+        color,
+        seed: seed + i * 13,
+        ink,
+        progress: this.loadProgress(i),
+        reveal: 'right',
+      });
+      marks.push({ index: i, x: plot.x0, y: by, w: bw, h: bh, color, seed: seed + i * 13 });
     });
+
+    marks.forEach((mark) => {
+      paintRectSelection(ctx, mark.x, mark.y, mark.w, mark.h, {
+        color: mark.color,
+        seed: mark.seed,
+        progress: this.selectionProgress(mark.index),
+      });
+    });
+    this.setInteractiveMarks(marks);
 
     // x ticks + numbers, y category labels
     for (const t of x.ticks(5)) {
@@ -91,5 +128,6 @@ export class Bar extends Chart {
 
     this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(marks.length);
   }
 }
