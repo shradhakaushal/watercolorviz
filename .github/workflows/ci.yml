@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       # node-canvas (a devDependency, used by the test harness) needs Cairo/Pango
       # system libraries when a prebuilt binary isn't available.
       - name: Install canvas system deps
