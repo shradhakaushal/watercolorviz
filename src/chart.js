@@ -129,7 +129,7 @@ export class Chart {
       } else if (a.type === 'bracket') {
         const [x1, y1] = this.resolvePt(a.from, a.fromPx);
         const [x2, y2] = this.resolvePt(a.to, a.toPx);
-        annotateBracket(ctx, x1, y1, x2, y2, { color: a.color || this.ink, width: a.width ?? 1.8, seed, label: a.label, size: a.size ?? 14, tick: a.tick ?? 7, flip: a.flip, font: this.font });
+        annotateBracket(ctx, x1, y1, x2, y2, { color, width: a.width ?? 1.8, seed, label: a.label, size: a.size ?? 14, tick: a.tick ?? 7, flip: a.flip, font: this.font });
       }
     }
   }
