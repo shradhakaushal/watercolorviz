@@ -44,7 +44,7 @@ export class Pie extends Chart {
         const ir = r0 + (r1 - r0) * (r0 > 0 ? 0.5 : 0.62);
         this.text(`${pct}%`, cx + Math.cos(mid) * ir, cy + Math.sin(mid) * ir, { size: 12 });
       }
-      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, r1, a, a1, 36) });
+      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, r1, a, a1, 36), color: this.colorFor(i), label: `${labels[i]}: ${v} (${pct}%)` });
       a = a1;
     });
 

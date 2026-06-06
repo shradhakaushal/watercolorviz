@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — interactive · responsive · hi-DPI</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" rel="stylesheet" />
+    <style>
+      body { margin: 0; background: #e9e4d8; color: #2c2a25; font-family: 'Caveat', system-ui, sans-serif; padding: 28px; }
+      h1 { font-size: 26px; margin: 0 0 6px; }
+      p { color: #6c6458; margin: 0 0 18px; font-size: 15px; }
+      /* The responsive charts fill their column; drag the window to resize. */
+      .col { max-width: 760px; }
+      #bar, #histo { width: 100%; display: block; margin-bottom: 22px; box-shadow: 0 6px 24px rgba(0,0,0,.18); border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 interactive · responsive · hi-DPI</h1>
+    <p>Hover the marks for tooltips. Resize the window — the charts re-fit. On a retina display everything is crisp.</p>
+    <div class="col">
+      <div id="bar"></div>
+      <div id="histo"></div>
+    </div>
+
+    <script type="module">
+      const { Bar, Histogram } = await import('../src/index.js');
+      if (document.fonts && document.fonts.ready) { try { await document.fonts.load('22px Caveat'); await document.fonts.ready; } catch (e) {} }
+
+      new Bar('#bar', {
+        title: 'Rainfall (mm)', responsive: true, aspect: 0.42,
+        data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], values: [42, 38, 61, 55, 73, 49] },
+        colors: ['#dc8068', '#e8b94f', '#94a854', '#5fa3a0', '#6f93c2', '#a07fbb'],
+        seed: 7,
+      });
+
+      let s = 9; const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      new Histogram('#histo', {
+        title: 'Distribution', responsive: true, aspect: 0.42,
+        data: { values: Array.from({ length: 400 }, () => ((rnd() + rnd() + rnd()) / 3) * 100) },
+        bins: 11, color: '#6f93c2', seed: 4,
+      });
+    </script>
+  </body>
+</html>

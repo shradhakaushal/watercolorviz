@@ -143,6 +143,7 @@ export class Sankey extends Chart {
         source: l.source,
         target: l.target,
         color: config.linkColor || this.colorFor(l.source),
+        label: `${names[l.source]} → ${names[l.target]}: ${l.value}`,
       });
       const color = config.linkColor || this.colorFor(l.source);
       // Low bleed → cleaner ribbon edges (a polished Sankey, not a wavy blob);

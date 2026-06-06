@@ -58,6 +58,7 @@ export class Heatmap extends Chart {
           h: ch - gap,
           color,
           seed: seed + r * 31 + c * 7,
+          label: `${xLabels[c]} · ${yLabels[r]}: ${v}`,
         });
       }
     }

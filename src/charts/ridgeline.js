@@ -43,6 +43,7 @@ export class Ridgeline extends Chart {
           top,
           color,
           seed: seed + r * 17,
+          label: labels[r],
         });
       }
       marks.forEach((mark) => {

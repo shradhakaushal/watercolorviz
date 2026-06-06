@@ -23,6 +23,7 @@ echo "   Charts    : http://localhost:${PORT}/examples/charts.html"
 echo "   Areas     : http://localhost:${PORT}/examples/areas.html"
 echo "   More      : http://localhost:${PORT}/examples/more-charts.html"
 echo "   Uncertain : http://localhost:${PORT}/examples/uncertainty.html"
+echo "   Interact  : http://localhost:${PORT}/examples/interactive.html"
 echo "   Repo root : http://localhost:${PORT}/"
 echo
 

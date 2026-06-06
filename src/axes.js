@@ -17,14 +17,16 @@ export const INK = '#3b332b'; // warm dark ink, shared with the mark outline
 export function inkLine(ctx, x1, y1, x2, y2, opts = {}) {
   const {
     color = INK,
-    width = 1.6,
-    opacity = 0.92,
-    jitter = 1.0,
+    width = 1.5,
+    opacity = 0.95,
+    // Technical pen, not a watercolor stroke: keep it nearly straight with only
+    // a hint of hand-drawn imperfection.
+    jitter = 0.35,
     seed = 1,
   } = opts;
   const rng = makeRng(seed);
   const len = Math.hypot(x2 - x1, y2 - y1) || 1;
-  const n = Math.max(2, Math.round(len / 16));
+  const n = Math.max(2, Math.round(len / 26));
   const nx = -(y2 - y1) / len; // unit normal
   const ny = (x2 - x1) / len;
   const [r, g, b] = hexToRgb(color);
@@ -52,7 +54,7 @@ export function inkLine(ctx, x1, y1, x2, y2, opts = {}) {
 // darkness, occasional lifts/gaps. Used for area tops, ridgeline ridges, and
 // (later) line charts. Pass `closed: true` to ink a full loop.
 export function inkPath(ctx, points, opts = {}) {
-  const { color = INK, width = 1.7, opacity = 0.82, seed = 1, closed = false, gaps = true } = opts;
+  const { color = INK, width = 1.7, opacity = 0.82, seed = 1, closed = false, gaps = true, uniform = false } = opts;
   const [r, g, b] = hexToRgb(color);
   const n = points.length;
   const last = closed ? n : n - 1;
@@ -65,8 +67,10 @@ export function inkPath(ctx, points, opts = {}) {
     const sw = fbm(a[0] * 0.018, a[1] * 0.018, seed + 71, 3);
     const lift = fbm(a[0] * 0.03 + 5, a[1] * 0.03 + 5, seed + 97, 2);
     if (gaps && lift < 0.28) continue; // pen lifted → a gap
-    const w = width * (0.4 + sw * sw * 1.8);
-    const alpha = Math.min(1, opacity * (0.55 + sw * 0.7));
+    // `uniform` → a clean, even-weight line (for crisp boundaries); otherwise
+    // the fountain-pen swell.
+    const w = uniform ? width : width * (0.4 + sw * sw * 1.8);
+    const alpha = uniform ? opacity : Math.min(1, opacity * (0.55 + sw * 0.7));
     ctx.beginPath();
     ctx.moveTo(a[0], a[1]);
     ctx.lineTo(c[0], c[1]);

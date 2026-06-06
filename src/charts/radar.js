@@ -40,18 +40,22 @@ export class Radar extends Chart {
       this.text(axes[i], lx, ly, { size: 12 });
     }
 
+    const seriesNames = config.seriesNames || (series.length > 1 ? series.map((_, s) => `Series ${s + 1}`) : series.map(() => 'Series'));
     // Series polygons (translucent washes + ink outline).
+    const marks = [];
     series.forEach((vals, s) => {
       const poly = vals.map((v, i) => {
         const a = angle(i);
         return [cx + Math.cos(a) * r(v), cy + Math.sin(a) * r(v)];
       });
-      paintClosedWash(ctx, poly, { color: this.colorFor(s), seed: seed + s * 17, intensity: 0.7, ink });
+      const color = this.colorFor(s);
+      paintClosedWash(ctx, poly, { color, seed: seed + s * 17, intensity: 0.7, ink });
+      marks.push({ index: s, points: poly, color, label: seriesNames[s] });
     });
+    this.setInteractiveMarks(marks);
 
     // Series key (when names given, or whenever there is more than one series).
-    const seriesNames = config.seriesNames || (series.length > 1 ? series.map((_, s) => `Series ${s + 1}`) : null);
-    if (seriesNames && config.legend !== false) {
+    if ((config.seriesNames || series.length > 1) && config.legend !== false) {
       this.drawLegend(seriesNames.map((n, s) => ({ label: n, color: this.colorFor(s) })), { y: plot.y1 + 18 });
     }
 

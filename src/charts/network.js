@@ -83,6 +83,8 @@ export class Network extends Chart {
       cx: px(n),
       cy: py(n),
       r: radius(n),
+      color: n.color || this.colorFor(i),
+      label: n.label != null ? `${n.label}` : `node ${i}`,
     })));
     this.scheduleLoadAnimation(links.length + nodes.length);
   }

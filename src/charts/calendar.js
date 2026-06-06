@@ -39,6 +39,7 @@ export class Calendar extends Chart {
     });
 
     let lastMonth = -1;
+    const marks = [];
     days.forEach((d, i) => {
       const wi = weekOf(d.date);
       const dow = d.date.getDay();
@@ -52,6 +53,7 @@ export class Calendar extends Chart {
         outline: false,
         ink,
       });
+      marks.push({ index: i, x: cx + gap / 2, y: cy + gap / 2, w: cell - gap, h: cell - gap, color, label: `${MON[d.date.getMonth()]} ${d.date.getDate()}: ${d.value}` });
       // Month label at the first week a new month appears.
       const m = d.date.getMonth();
       if (m !== lastMonth && dow === 0) {
@@ -59,6 +61,7 @@ export class Calendar extends Chart {
         lastMonth = m;
       }
     });
+    this.setInteractiveMarks(marks);
 
     this.drawTitleAndLabels();
   }

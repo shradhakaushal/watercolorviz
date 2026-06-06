@@ -53,7 +53,7 @@ export class Scatter extends Chart {
         color: this.colorFor(i),
         progress: this.selectionProgress(i),
       });
-      marks.push({ index: i, cx, cy, r });
+      marks.push({ index: i, cx, cy, r, color: this.colorFor(i), label: rs ? `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)} · ${Math.round(rs[i])}` : `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)}` });
     });
     this.setInteractiveMarks(marks);
 

@@ -39,12 +39,17 @@ export class Forest extends Chart {
     // Null reference line.
     inkLine(ctx, X(nullX), plot.y0 - 2, X(nullX), plot.y1 + 2, { color: ink, opacity: 0.3, width: 1, jitter: 0.4, seed });
 
+    const marks = [];
     studies.forEach((s, i) => {
       const cy = plot.y0 + (i + 0.5) * rowH;
+      const rr = wScale(s.weight || 1);
+      const color = this.colorFor(i);
       inkLine(ctx, X(s.lo), cy, X(s.hi), cy, { color: ink, opacity: 0.7, width: 1.4, jitter: 0.5, seed: seed + i });
-      paintDot(ctx, X(s.est), cy, wScale(s.weight || 1), { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+      paintDot(ctx, X(s.est), cy, rr, { color, seed: seed + i * 7, intensity: 0.95, outline: true, ink });
       this.text(s.name, plot.x0 - 10, cy, { size: 11, align: 'right' });
+      marks.push({ index: i, x: X(s.lo), y: cy - rr - 3, w: X(s.hi) - X(s.lo), h: 2 * rr + 6, color, label: `${s.name}: ${s.est} [${s.lo}, ${s.hi}]` });
     });
+    this.setInteractiveMarks(marks);
 
     if (summary) {
       const cy = plot.y0 + (studies.length + 0.6) * rowH;

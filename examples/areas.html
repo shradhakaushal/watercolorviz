@@ -77,20 +77,22 @@
       // Stacked area: a few distinct hues + a legend.
       new StackedArea('#stacked', { title: 'Stacked Area', data: sData, colors: MUTED, seed: 2 });
 
-      // Streamgraph: many thin layers as a dark→light ramp of ONE hue with
-      // white separators — pass a single `color` to get the ramp.
+      // Streamgraph: a viridis-style SEQUENTIAL palette with crisp dark boundary
+      // lines so each band reads clearly (the default). Capped at maxSeries (8);
+      // extras collapse into "Other". Pass a single `color` for a one-hue ramp,
+      // or `separator: '#fff'` for the soft white-line look.
       const bx = Array.from({ length: 44 }, (_, i) => i);
       let s = 13;
       const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
       const stream = {};
-      for (let k = 0; k < 11; k++) {
+      for (let k = 0; k < 8; k++) {
         let v = 0.6 + rnd();
         stream['s' + k] = bx.map((_, i) => {
           v = Math.max(0.15, v + (rnd() - 0.5) * 0.9);
           return v + 0.4 * Math.sin(i / 3 + k);
         });
       }
-      new StackedArea('#stream', { title: 'Streamgraph', stream: true, data: { x: bx, series: stream }, color: '#3f7fb0', seed: 4 });
+      new StackedArea('#stream', { title: 'Streamgraph', stream: true, data: { x: bx, series: stream }, seed: 4 });
     </script>
   </body>
 </html>

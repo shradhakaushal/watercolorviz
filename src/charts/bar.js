@@ -47,7 +47,7 @@ export class Bar extends Chart {
         progress: this.loadProgress(i),
         reveal: 'up',
       });
-      marks.push({ index: i, x: bx, y: top, w: bw, h: bh, color, seed: seed + i * 13 });
+      marks.push({ index: i, x: bx, y: top, w: bw, h: bh, color, seed: seed + i * 13, label: `${labels[i]}: ${values[i]}` });
     });
 
     marks.forEach((mark) => {
@@ -104,7 +104,7 @@ export class Bar extends Chart {
         progress: this.loadProgress(i),
         reveal: 'right',
       });
-      marks.push({ index: i, x: plot.x0, y: by, w: bw, h: bh, color, seed: seed + i * 13 });
+      marks.push({ index: i, x: plot.x0, y: by, w: bw, h: bh, color, seed: seed + i * 13, label: `${labels[i]}: ${values[i]}` });
     });
 
     marks.forEach((mark) => {

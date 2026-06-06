@@ -99,7 +99,7 @@ export class Line extends Chart {
         color: this.colorFor(i),
         progress: this.selectionProgress(i),
       });
-      marks.push({ index: i, cx: p[0], cy: p[1], r, hitPad: 6 });
+      marks.push({ index: i, cx: p[0], cy: p[1], r, hitPad: 6, color: this.colorFor(i), label: `${xs[i]}: ${ys[i]}` });
     });
 
     for (const t of y.ticks(5)) {

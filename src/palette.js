@@ -43,6 +43,21 @@ export function diverging(n, neg = '#c8604f', mid = '#ddc98a', pos = '#5f9e5f') 
   });
 }
 
+// A perceptual blue→teal→green→yellow ("viridis-style") sequential ramp — for
+// ORDERED layers, e.g. a streamgraph. `n` colours sampled along the stops.
+const SEQUENTIAL_STOPS = ['#1b3a5e', '#1d6577', '#1f8f86', '#46ad7d', '#86c56e', '#c2d76a', '#efe98e'];
+export function sequential(n, stops = SEQUENTIAL_STOPS) {
+  const rgb = stops.map(hexToRgb);
+  const lerp = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  return Array.from({ length: n }, (_, i) => {
+    if (n === 1) return toHex(rgb[(rgb.length / 2) | 0]);
+    const p = (i / (n - 1)) * (rgb.length - 1);
+    const lo = Math.floor(p);
+    const hi = Math.min(rgb.length - 1, lo + 1);
+    return toHex(lerp(rgb[lo], rgb[hi], p - lo));
+  });
+}
+
 // `n` monochromatic shades of one hue, dark → light. Powers the streamgraph's
 // stacked-layer look (and any "ramp of one colour" need).
 export function shades(hex, n) {
