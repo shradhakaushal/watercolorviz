@@ -6,7 +6,7 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { paintWedge, paintFillWash, wedgePolygon } from './shapes.js';
+import { paintWedge, paintFillWash, wedgePolygon, paintPolygonSelection, bloomReveal } from './shapes.js';
 
 // Points along a ring arc (angles measured from 12 o'clock, like the wedges).
 function arcPts(cx, cy, r, a0, a1, segs = 20) {
@@ -44,18 +44,23 @@ export class Chord extends Chart {
     const R = Math.min(plot.w, plot.h) / 2 - 26;
     const r0 = R - 13; // inner radius where ribbons attach
 
-    // Group arcs around the ring.
+    // Group arcs around the ring. Each wedge blooms outward from the centre.
     const marks = [];
     chords.groups.forEach((g, i) => {
       const color = this.colorFor(i);
-      paintWedge(ctx, cx, cy, r0, R, g.startAngle - Math.PI / 2, g.endAngle - Math.PI / 2, { color, seed: seed + i, ink });
+      const a0 = g.startAngle - Math.PI / 2;
+      const a1 = g.endAngle - Math.PI / 2;
+      bloomReveal(ctx, cx, cy, R, this.loadProgress(i), () => {
+        paintWedge(ctx, cx, cy, r0, R, a0, a1, { color, seed: seed + i, ink });
+      });
       const mid = (g.startAngle + g.endAngle) / 2 - Math.PI / 2;
       this.text(names[i], cx + Math.cos(mid) * (R + 15), cy + Math.sin(mid) * (R + 15), { size: 11 });
-      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, R, g.startAngle - Math.PI / 2, g.endAngle - Math.PI / 2), color, label: `${names[i]}: ${Math.round(g.value)}` });
+      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, R, a0, a1), color, label: `${names[i]}: ${Math.round(g.value)}` });
     });
-    this.setInteractiveMarks(marks);
 
-    // Ribbons: source arc → curve through centre → target arc → curve back.
+    // Ribbons: source arc → curve through centre → target arc → curve back. They
+    // wash in just after the ring (a single fade keyed off the last group).
+    const ribbonReveal = this.loadProgress(chords.groups.length);
     chords.forEach((ch, ci) => {
       const s = ch.source;
       const t = ch.target;
@@ -67,9 +72,19 @@ export class Chord extends Chart {
         ...ta,
         ...quad(ta[ta.length - 1], [cx, cy], sa[0]),
       ];
+      ctx.save();
+      ctx.globalAlpha = ribbonReveal;
       paintFillWash(ctx, poly, { color: this.colorFor(s.index), seed: seed + 100 + ci, intensity: 0.4, ink, bleed: 0.02 });
+      ctx.restore();
     });
 
+    // Hover: deepen the hovered group's wedge and re-ink its edge.
+    marks.forEach((mark) => {
+      paintPolygonSelection(ctx, mark.points, { color: mark.color, progress: this.selectionProgress(mark.index) });
+    });
+    this.setInteractiveMarks(marks);
+
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(chords.groups.length + 1);
   }
 }

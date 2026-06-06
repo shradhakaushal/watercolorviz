@@ -6,6 +6,18 @@
 import { paintPolygon, regularPolygon } from '../watercolor.js';
 import { hexToRgb } from '../palette.js';
 
+// Content-addressed cache key for a polygon wash: identical geometry + colour +
+// recipe reuses the painted offscreen mark instead of recomputing the per-pixel
+// pigment field. Geometry is rounded to whole pixels so sub-pixel jitter between
+// frames still hits the cache. Bump when a recipe changes so stale marks aren't
+// reused. Points are the helper's INPUT (pre-densify), which is stable per data.
+const WASH_REV = 1;
+function washKey(prefix, points, color, seed, intensity, extra = '') {
+  let s = `${prefix}:${WASH_REV}:${color}:${seed}:${intensity}:${extra}:`;
+  for (let i = 0; i < points.length; i++) s += `${points[i][0] | 0},${points[i][1] | 0};`;
+  return s;
+}
+
 // A rectangle as a closed polygon with subdivided edges, so the engine's gentle
 // edge wobble has points to act on (4 corners alone round into a blob).
 export function rectPoints(x, y, w, h, per = 5) {
@@ -118,14 +130,23 @@ function areaFillOpts(color, seed, intensity) {
   };
 }
 
+function extendKey(extend) {
+  if (!extend) return '';
+  return `${extend.x0 | 0},${extend.x1 | 0},${extend.ov ?? ''},${extend.bottomOv ?? ''}`;
+}
+
 export function paintAreaWash(ctx, top, baselineY, opts = {}) {
   const { color, seed = 1, intensity = 0.95, extend } = opts;
-  paintPolygon(ctx, areaPolygon(top, baselineY, extend), areaFillOpts(color, seed, intensity));
+  const o = areaFillOpts(color, seed, intensity);
+  o.cacheKey = washKey('area', top, color, seed, intensity, `${baselineY | 0}|${extendKey(extend)}`);
+  paintPolygon(ctx, areaPolygon(top, baselineY, extend), o);
 }
 
 export function paintBandWash(ctx, top, bottom, opts = {}) {
   const { color, seed = 1, intensity = 0.95, extend } = opts;
-  paintPolygon(ctx, bandPolygon(top, bottom, extend), areaFillOpts(color, seed, intensity));
+  const o = areaFillOpts(color, seed, intensity);
+  o.cacheKey = washKey('band', top.concat(bottom), color, seed, intensity, extendKey(extend));
+  paintPolygon(ctx, bandPolygon(top, bottom, extend), o);
 }
 
 export function withRevealClip(ctx, x0, y0, w, h, progress, fn) {
@@ -142,11 +163,57 @@ export function withRevealClip(ctx, x0, y0, w, h, progress, fn) {
   ctx.restore();
 }
 
+// --- Watercolor "bloom" entrance reveal ----------------------------------
+//
+// Reveal an already-painted wash as if the pigment were dropped onto wet paper
+// and left to diffuse outward from a seed point: the body grows as a disc while
+// one or more fainter haloes run just ahead of the wet front, so the leading
+// edge reads soft and watery instead of as a hard geometric wipe.
+//
+// `fn` paints the finished wash (ideally a CACHED one, so the expensive paint is
+// reused) — we only clip the canvas to the growing bloom and ramp its alpha per
+// frame. `progress` is 0→1; drive it from Chart.loadProgress so it honours the
+// chart's animation/stagger config and snaps to a full paint when disabled.
+//
+//   ox, oy   bloom origin (where the drop lands — usually the mark's centre)
+//   maxR     radius that fully covers the mark from that origin (at p=1)
+//   softness number of haloes that creep past the front (0 = crisp disc)
+export function bloomReveal(ctx, ox, oy, maxR, progress, fn, opts = {}) {
+  const p = progress < 0 ? 0 : progress > 1 ? 1 : progress;
+  if (p <= 0) return;
+  if (p >= 0.995) { fn(); return; } // done → one clean, full-strength paint
+  const { softness = 1, minAlpha = 0.32, settle = 0.14 } = opts;
+  // Start as a small blot (settle) and grow to cover the mark.
+  const coreR = maxR * (settle + (1 - settle) * p);
+
+  // Haloes first (they sit UNDER the body): pigment that has crept past the wet
+  // front. Each is a little larger and a lot fainter than the core.
+  for (let k = 1; k <= softness; k++) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(ox, oy, coreR * (1 + 0.16 * k), 0, Math.PI * 2);
+    ctx.clip();
+    ctx.globalAlpha = (minAlpha * 0.45 * p) / k;
+    fn();
+    ctx.restore();
+  }
+
+  // The wet body, deepening toward full strength as the wash "dries in".
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ox, oy, coreR, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalAlpha = minAlpha + (1 - minAlpha) * p;
+  fn();
+  ctx.restore();
+}
+
 // An arbitrary closed/filled polygon as a soft grainy wash (sankey flows etc.).
 export function paintFillWash(ctx, points, opts = {}) {
   const { color, seed = 1, intensity = 0.9, ink, outline = false, bleed } = opts;
   const o = { ...areaFillOpts(color, seed, intensity), outline, outlineColor: ink };
   if (bleed != null) o.bleed = bleed; // cleaner edges for e.g. sankey ribbons
+  o.cacheKey = washKey('fill', points, color, seed, intensity, `${outline}:${ink}:${bleed ?? ''}`);
   paintPolygon(ctx, densify(points, 14), o);
 }
 
@@ -174,10 +241,12 @@ export function wedgePolygon(cx, cy, r0, r1, a0, a1, segs = 28) {
 // Paint a pie/donut wedge as a grainy wash with a line-and-wash ink edge.
 export function paintWedge(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
   const { color, seed = 1, intensity = 1.0, ink } = opts;
+  const cacheKey = `wedge:${WASH_REV}:${cx | 0},${cy | 0},${r0 | 0},${r1 | 0},${a0.toFixed(3)},${a1.toFixed(3)}:${color}:${seed}:${intensity}:${ink}`;
   paintPolygon(ctx, densify(wedgePolygon(cx, cy, r0, r1, a0, a1), 14), {
     color, seed, intensity: intensity * FILL_DEPTH,
     boundaryMode: 'outline', bleed: 0.035, shading: 0.2, mottle: 0.3,
     granulation: 0.45, paperScale: 0.28, outline: true, outlineWidth: 1.6, outlineColor: ink,
+    cacheKey,
   });
 }
 
@@ -188,6 +257,7 @@ export function paintClosedWash(ctx, points, opts = {}) {
     color, seed, intensity: intensity * FILL_DEPTH,
     boundaryMode: 'outline', bleed: 0.04, shading: 0.18, mottle: 0.3,
     granulation: 0.4, paperScale: 0.28, outline, outlineWidth: 1.5, outlineColor: ink,
+    cacheKey: washKey('closed', points, color, seed, intensity, `${outline}:${ink}`),
   });
 }
 
@@ -195,10 +265,12 @@ export function paintClosedWash(ctx, points, opts = {}) {
 // network nodes).
 export function paintDot(ctx, cx, cy, r, opts = {}) {
   const { color, seed = 1, intensity = 0.9, outline = false, ink } = opts;
+  const cacheKey = `dot:${WASH_REV}:${cx | 0},${cy | 0},${(r * 10) | 0}:${color}:${seed}:${intensity}:${outline}:${ink}`;
   paintPolygon(ctx, regularPolygon(cx, cy, r, 28), {
     color, seed, intensity: intensity * FILL_DEPTH,
     bleed: 0.06, shading: 0.3, mottle: 0.3, granulation: 0.35, paperScale: 0.26,
     outline, outlineWidth: 1.3, outlineColor: ink,
+    cacheKey,
   });
 }
 

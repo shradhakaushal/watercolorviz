@@ -4,7 +4,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, inkPath } from '../axes.js';
-import { paintClosedWash } from './shapes.js';
+import { paintClosedWash, paintPolygonSelection, bloomReveal } from './shapes.js';
 
 export class Radar extends Chart {
   render() {
@@ -41,7 +41,8 @@ export class Radar extends Chart {
     }
 
     const seriesNames = config.seriesNames || (series.length > 1 ? series.map((_, s) => `Series ${s + 1}`) : series.map(() => 'Series'));
-    // Series polygons (translucent washes + ink outline).
+    // Series polygons (translucent washes + ink outline). Each blooms outward
+    // from the web's centre, as if dropped onto the wet sheet.
     const marks = [];
     series.forEach((vals, s) => {
       const poly = vals.map((v, i) => {
@@ -49,8 +50,14 @@ export class Radar extends Chart {
         return [cx + Math.cos(a) * r(v), cy + Math.sin(a) * r(v)];
       });
       const color = this.colorFor(s);
-      paintClosedWash(ctx, poly, { color, seed: seed + s * 17, intensity: 0.7, ink });
+      bloomReveal(ctx, cx, cy, R, this.loadProgress(s), () => {
+        paintClosedWash(ctx, poly, { color, seed: seed + s * 17, intensity: 0.7, ink });
+      });
       marks.push({ index: s, points: poly, color, label: seriesNames[s] });
+    });
+    // Hover: deepen the hovered series' wash and re-ink its edge.
+    marks.forEach((mark) => {
+      paintPolygonSelection(ctx, mark.points, { color: mark.color, progress: this.selectionProgress(mark.index) });
     });
     this.setInteractiveMarks(marks);
 
@@ -60,5 +67,6 @@ export class Radar extends Chart {
     }
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
+    this.scheduleLoadAnimation(series.length);
   }
 }
