@@ -7,7 +7,7 @@ import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { colorAt } from '../palette.js';
 import { inkPath, tick } from '../axes.js';
-import { paintBandWash } from './shapes.js';
+import { bandPolygon, paintBandWash, paintPolygonSelection, withRevealClip } from './shapes.js';
 
 export class StackedArea extends Chart {
   render() {
@@ -18,13 +18,22 @@ export class StackedArea extends Chart {
     const stream = config.stream;
     this.paintBackground();
 
-    const totals = xs.map((_, i) => names.reduce((s, k) => s + series[k][i], 0));
-    const maxTotal = d3.max(totals);
     const x = d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w]);
-    const y = d3.scaleLinear().domain([0, maxTotal]).range([plot.h, 0]);
-
-    // Lower baseline per x: 0 (stacked) or centered (stream).
-    let acc = xs.map((_, i) => (stream ? (maxTotal - totals[i]) / 2 : 0));
+    const rows = xs.map((xv, i) => {
+      const row = { x: xv };
+      names.forEach((name) => {
+        row[name] = series[name][i];
+      });
+      return row;
+    });
+    const stack = d3.stack()
+      .keys(names)
+      .order(stream ? d3.stackOrderInsideOut : d3.stackOrderNone)
+      .offset(stream ? d3.stackOffsetWiggle : d3.stackOffsetNone)(rows);
+    const yDomain = stream
+      ? [d3.min(stack, (layer) => d3.min(layer, (d) => d[0])), d3.max(stack, (layer) => d3.max(layer, (d) => d[1]))]
+      : [0, d3.max(stack.at(-1), (d) => d[1])];
+    const y = d3.scaleLinear().domain(yDomain).nice().range([plot.h, 0]);
     const colors = config.colors || names.map((_, i) => colorAt(i));
 
     // Bands are drawn bottom→top; extend each band's bottom a few px DOWN into
@@ -33,18 +42,40 @@ export class StackedArea extends Chart {
     // left/right edges stay clean; the bottom band is pushed down to the axis.
     const SEAM = 4;
     const ov = 18;
+    const marks = [];
     this.withPlotClip(() => {
-      names.forEach((k, si) => {
-        const low = acc.slice();
-        const high = acc.map((v, i) => v + series[k][i]);
-        const topPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(high[i])]);
-        const botPts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(low[i]) + (si > 0 ? SEAM : 0)]);
+      stack.forEach((layer, si) => {
+        const topPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[1])]);
+        const botPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[0]) + (!stream && si > 0 ? SEAM : 0)]);
+        const color = colors[names.indexOf(layer.key)];
+        const reveal = stream ? this.loadProgress(si) : this.loadProgress(names.indexOf(layer.key));
         const extend = { x0: plot.x0, x1: plot.x1, ov, bottomOv: !stream && si === 0 ? ov : 0 };
-        paintBandWash(ctx, topPts, botPts, { color: colors[si], seed: seed + si * 17, intensity: 0.95, extend });
-        inkPath(ctx, topPts, { seed: seed + si * 17, width: 1.5, opacity: 0.6 });
-        acc = high;
+        withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, reveal, () => {
+          paintBandWash(ctx, topPts, botPts, { color, seed: seed + si * 17, intensity: 0.95, extend });
+        });
+        marks.push({
+          index: si,
+          points: bandPolygon(topPts, botPts),
+          top: topPts,
+          color,
+          seed: seed + si * 17,
+        });
+      });
+      marks.forEach((mark) => {
+        paintPolygonSelection(ctx, mark.points, {
+          color: mark.color,
+          outlinePoints: mark.top,
+          closedOutline: false,
+          progress: this.selectionProgress(mark.index),
+        });
+      });
+      marks.forEach((mark) => {
+        withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, this.loadProgress(mark.index), () => {
+          inkPath(ctx, mark.top, { seed: mark.seed, width: 1.5, opacity: 0.6 });
+        });
       });
     }, { bottom: !stream });
+    this.setInteractiveMarks(marks);
 
     if (config.legend !== false) {
       names.forEach((k, si) => {
@@ -72,5 +103,6 @@ export class StackedArea extends Chart {
     }
     if (!stream) this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(marks.length);
   }
 }

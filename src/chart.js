@@ -9,6 +9,29 @@
 import { paintPaper } from './paper.js';
 import { inkLine, arrowhead } from './axes.js';
 
+function pointInPolygon(x, y, points) {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const xi = points[i][0];
+    const yi = points[i][1];
+    const xj = points[j][0];
+    const yj = points[j][1];
+    const crosses = yi > y !== yj > y;
+    if (!crosses) continue;
+    const atX = ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (x < atX) inside = !inside;
+  }
+  return inside;
+}
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 export class Chart {
   constructor(el, config = {}) {
     this.config = config;
@@ -38,6 +61,14 @@ export class Chart {
     this.width = width;
     this.height = height;
     this.seed = config.seed ?? 7;
+    this._interactiveMarks = [];
+    this._selectionProgress = new Map();
+    this._hoverTarget = null;
+    this._hoverRaf = null;
+    this._hoverLastTs = null;
+    this._loadRaf = null;
+    this._animationStart = this.now();
+    this._interactionInstalled = false;
     // A soft humanist/handwriting font carries half the aesthetic (spec §1.6).
     this.font = config.font || '"Caveat", "Comic Sans MS", "Segoe Print", cursive';
     this.margin = Object.assign(
@@ -61,6 +92,13 @@ export class Chart {
 
   paintBackground() {
     paintPaper(this.ctx, this.width, this.height);
+  }
+
+  now() {
+    if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+      return performance.now();
+    }
+    return Date.now();
   }
 
   // Crisp text helper (titles, labels) in the chart's font.
@@ -120,6 +158,114 @@ export class Chart {
     ctx.clip();
     fn();
     ctx.restore();
+  }
+
+  setInteractiveMarks(marks) {
+    this._interactiveMarks = marks;
+    if (this.config.interactive === false || this.config.selection === false) return;
+    if (this._interactionInstalled || typeof this.canvas.addEventListener !== 'function') return;
+
+    const hitTest = (event) => {
+      const box = this.canvas.getBoundingClientRect();
+      if (!box.width || !box.height) return null;
+      const x = (event.clientX - box.left) * (this.canvas.width / box.width);
+      const y = (event.clientY - box.top) * (this.canvas.height / box.height);
+      for (let i = this._interactiveMarks.length - 1; i >= 0; i--) {
+        const mark = this._interactiveMarks[i];
+        if (mark.points && pointInPolygon(x, y, mark.points)) {
+          return mark.index;
+        }
+        const pad = mark.hitPad ?? 4;
+        if (mark.x == null || mark.y == null || mark.w == null || mark.h == null) continue;
+        if (
+          x >= mark.x - pad &&
+          x <= mark.x + mark.w + pad &&
+          y >= mark.y - pad &&
+          y <= mark.y + mark.h + pad
+        ) {
+          return mark.index;
+        }
+      }
+      return null;
+    };
+
+    const setTarget = (next) => {
+      if (next === this._hoverTarget) return;
+      this._hoverTarget = next;
+      this.canvas.style.cursor = next == null ? '' : 'pointer';
+      this.startSelectionAnimation();
+    };
+
+    this.canvas.addEventListener('pointermove', (event) => setTarget(hitTest(event)));
+    this.canvas.addEventListener('pointerleave', () => setTarget(null));
+    this._interactionInstalled = true;
+  }
+
+  selectionProgress(index) {
+    return this._selectionProgress.get(index) || 0;
+  }
+
+  loadProgress(index = 0) {
+    if (this.config.animation === false || this.config.animate === false) return 1;
+    const duration = this.config.animationDuration ?? 850;
+    const stagger = this.config.animationStagger ?? 65;
+    const delay = this.config.animationDelay ?? 0;
+    const raw = (this.now() - this._animationStart - delay - index * stagger) / duration;
+    return easeOutCubic(clamp01(raw));
+  }
+
+  scheduleLoadAnimation(markCount = 1) {
+    if (this.config.animation === false || this.config.animate === false) return;
+    if (typeof requestAnimationFrame !== 'function') return;
+
+    const duration = this.config.animationDuration ?? 850;
+    const stagger = this.config.animationStagger ?? 65;
+    const delay = this.config.animationDelay ?? 0;
+    const total = delay + duration + Math.max(0, markCount - 1) * stagger;
+    if (this.now() - this._animationStart >= total || this._loadRaf) return;
+
+    this._loadRaf = requestAnimationFrame(() => {
+      this._loadRaf = null;
+      this.render();
+    });
+  }
+
+  startSelectionAnimation() {
+    if (this._hoverRaf) return;
+    const raf = typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (fn) => setTimeout(() => fn(performance.now()), 16);
+
+    const tick = (ts) => {
+      const previous = this._hoverLastTs ?? ts;
+      this._hoverLastTs = ts;
+      const dt = Math.min(48, ts - previous) / 1000;
+      const speed = this.config.selectionSpeed ?? 10;
+      const blend = 1 - Math.exp(-speed * dt);
+      const live = new Set(this._interactiveMarks.map((mark) => mark.index));
+      for (const index of this._selectionProgress.keys()) live.add(index);
+
+      let active = false;
+      for (const index of live) {
+        const target = index === this._hoverTarget ? 1 : 0;
+        const current = this._selectionProgress.get(index) || 0;
+        let next = current + (target - current) * blend;
+        if (Math.abs(next - target) < 0.01) next = target;
+        if (next > 0) this._selectionProgress.set(index, next);
+        else this._selectionProgress.delete(index);
+        if (next !== target) active = true;
+      }
+
+      this.render();
+      if (active) {
+        this._hoverRaf = raf(tick);
+      } else {
+        this._hoverRaf = null;
+        this._hoverLastTs = null;
+      }
+    };
+
+    this._hoverRaf = raf(tick);
   }
 
   // Subclasses override.
