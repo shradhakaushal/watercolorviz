@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+  Watercolify ANY shape — self-contained, zero install.
+  Paints an arbitrary polygon as a watercolor blob with the watercolorviz engine.
+
+  Give it a shape as an array of [x, y] points (closed polygon, canvas pixels):
+   • Generate a parametric outline in JS (see `star()` / `flame()` below), OR
+   • Sample a user's SVG <path d="..."> with `samplePath()` below.
+  Then call paintPolygon(). Layer multiple calls for richer results.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Watercolor shape</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #e9e1d3; }
+    #save { position: fixed; top: 16px; right: 16px; font: 16px system-ui; padding: 6px 14px;
+            border: 1.5px solid #3b332b; border-radius: 8px; background: #fffaf2; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="art" width="640" height="640"></canvas>
+  <button id="save">save png</button>
+
+  <script type="module">
+    import { paintPaper, paintPolygon } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.0/+esm';
+
+    const canvas = document.getElementById('art');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // --- shape helpers --------------------------------------------------------
+
+    // A 5-point star (or n-point with given inner/outer radius).
+    function star(cx, cy, rOuter, rInner = rOuter * 0.42, points = 5) {
+      const pts = [];
+      const steps = points * 2;
+      for (let i = 0; i < steps; i++) {
+        const a = (i / steps) * Math.PI * 2 - Math.PI / 2;
+        const r = i % 2 === 0 ? rOuter : rInner;
+        pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+      }
+      return pts;
+    }
+
+    // A wobbly flame outline (parametric — tweak for "fire").
+    function flame(cx, baseY, w, h) {
+      const pts = [];
+      const N = 160;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;            // 0 (base) → 1 (tip)
+        const y = baseY - t * h;
+        const flick = Math.sin(t * 9) * 0.06 + Math.sin(t * 23) * 0.03;
+        const width = (Math.sin(t * Math.PI) ** 0.7) * (w / 2) * (1 - t * 0.35);
+        pts.push([cx + (width + flick * w), y]);
+      }
+      for (let i = N; i >= 0; i--) {
+        const t = i / N;
+        const y = baseY - t * h;
+        const flick = Math.sin(t * 11 + 1.7) * 0.05;
+        const width = (Math.sin(t * Math.PI) ** 0.7) * (w / 2) * (1 - t * 0.35);
+        pts.push([cx - (width + flick * w), y]);
+      }
+      return pts;
+    }
+
+    // Sample a real SVG path string into points (handles curves natively).
+    function samplePath(d, samples = 200, scale = 1, dx = 0, dy = 0) {
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const p = document.createElementNS(svgNS, 'path');
+      p.setAttribute('d', d);
+      const len = p.getTotalLength();
+      const pts = [];
+      for (let i = 0; i < samples; i++) {
+        const pt = p.getPointAtLength((i / samples) * len);
+        pts.push([pt.x * scale + dx, pt.y * scale + dy]);
+      }
+      return pts;
+    }
+
+    // --- paint ----------------------------------------------------------------
+
+    paintPaper(ctx, W, H, { color: '#f7efe1', seed: 7 });
+
+    // EXAMPLE: "watercolor fire" — layer a red flame under an orange one.
+    paintPolygon(ctx, flame(W / 2, H * 0.86, 320, 470), {
+      color: '#d6452f', seed: 11, intensity: 1, granulation: 0.2, mottle: 0.5,
+    });
+    paintPolygon(ctx, flame(W / 2, H * 0.86, 200, 360), {
+      color: '#f0a23a', seed: 23, intensity: 1, granulation: 0.18, mottle: 0.45,
+    });
+
+    // Other examples:
+    // paintPolygon(ctx, star(W/2, H/2, 240), { color: '#e8b94f', seed: 5, outline: true });
+    // paintPolygon(ctx, samplePath('M10 10 C ...', 220, 6, 80, 60), { color: '#6f93c2', seed: 9 });
+
+    document.getElementById('save').onclick = () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'watercolor-shape.png';
+      a.click();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "watercolor-render-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Headless PNG rendering for watercolorviz charts and shapes.",
+  "scripts": {
+    "chart": "node render-chart.mjs",
+    "shape": "node watercolify-shape.mjs"
+  },
+  "dependencies": {
+    "watercolorviz": "^0.1.0",
+    "d3": "^7",
+    "canvas": "^3"
+  }
+}
