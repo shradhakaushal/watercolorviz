@@ -14,6 +14,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, tick } from '../axes.js';
+import { tickFormat } from '../scale.js';
 import { paintRectSelection, paintRectWashReveal } from './shapes.js';
 
 // Normalise into a list of { name, values }. A flat `values` array is one
@@ -97,10 +98,11 @@ export class Bar extends Chart {
     });
     this.setInteractiveMarks(marks);
 
+    const vfmt = tickFormat(config.yFormat);
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
       tick(ctx, plot.x0, ty, false, { color: ink });
-      this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
+      this.text(vfmt(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
     labels.forEach((lab) => {
       this.text(lab, plot.x0 + xOuter(lab) + xOuter.bandwidth() / 2, zeroY + 17, { size: 14 });
@@ -154,10 +156,11 @@ export class Bar extends Chart {
     });
     this.setInteractiveMarks(marks);
 
+    const vfmt = tickFormat(config.xFormat);
     for (const t of x.ticks(5)) {
       const tx = plot.x0 + x(t);
       tick(ctx, tx, plot.y1, true, { color: ink });
-      this.text(String(t), tx, plot.y1 + 16, { size: 13 });
+      this.text(vfmt(t), tx, plot.y1 + 16, { size: 13 });
     }
     labels.forEach((lab) => {
       this.text(lab, plot.x0 - 10, plot.y0 + yOuter(lab) + yOuter.bandwidth() / 2, { size: 14, align: 'right' });
@@ -213,10 +216,11 @@ export class Bar extends Chart {
     this.setInteractiveMarks(marks);
 
     // y ticks + numbers, x category labels
+    const vfmt = tickFormat(config.yFormat);
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
       tick(ctx, plot.x0, ty, false, { color: ink });
-      this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
+      this.text(vfmt(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
     labels.forEach((lab) => {
       this.text(lab, plot.x0 + x(lab) + x.bandwidth() / 2, plot.y1 + 17, { size: 14 });
@@ -270,10 +274,11 @@ export class Bar extends Chart {
     this.setInteractiveMarks(marks);
 
     // x ticks + numbers, y category labels
+    const vfmt = tickFormat(config.xFormat);
     for (const t of x.ticks(5)) {
       const tx = plot.x0 + x(t);
       tick(ctx, tx, plot.y1, true, { color: ink });
-      this.text(String(t), tx, plot.y1 + 16, { size: 13 });
+      this.text(vfmt(t), tx, plot.y1 + 16, { size: 13 });
     }
     labels.forEach((lab) => {
       this.text(lab, plot.x0 - 10, plot.y0 + y(lab) + y.bandwidth() / 2, { size: 14, align: 'right' });

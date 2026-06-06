@@ -6,7 +6,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { buildScale } from '../scale.js';
+import { buildScale, tickFormat } from '../scale.js';
 import { areaPolygon, paintAreaWash, paintPolygonSelection, withRevealClip } from './shapes.js';
 
 export class Area extends Chart {
@@ -31,8 +31,9 @@ export class Area extends Chart {
     } else {
       x = d3.scalePoint().domain(xs).range([0, plot.w]);
     }
-    const yi = buildScale({ type: config.yScale, values: ys, range: [plot.h, 0], includeZero: true, tickCount: 5 });
+    const yi = buildScale({ type: config.yScale, values: ys, range: [plot.h, 0], includeZero: true, tickCount: 5, format: config.yFormat });
     const y = yi.scale;
+    const xfmt = tickFormat(config.xFormat);
     this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     if (config.grid !== false) {
@@ -80,7 +81,7 @@ export class Area extends Chart {
       for (const t of x.ticks(6)) {
         const tx = plot.x0 + x(t);
         tick(ctx, tx, plot.y1, true, { color: ink });
-        this.text(String(t), tx, plot.y1 + 16, { size: 12 });
+        this.text(xfmt(t), tx, plot.y1 + 16, { size: 12 });
       }
     } else {
       xs.forEach((xv) => this.text(String(xv), plot.x0 + x(xv), plot.y1 + 16, { size: 12 }));

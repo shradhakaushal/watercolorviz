@@ -10,7 +10,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { buildScale } from '../scale.js';
+import { buildScale, tickFormat } from '../scale.js';
 import { paintDot, paintDotSelection } from './shapes.js';
 
 // Normalise the data into a list of { name, values }. A flat `y` array is one
@@ -102,11 +102,14 @@ export class Line extends Chart {
       x = d3.scalePoint().domain(xs).range([0, plot.w]);
     }
     const tipFmt = timeX ? d3.timeFormat(config.timeFormat || '%b %e, %Y') : null;
-    const xLabel = (i) => (timeX ? tipFmt(xvals[i]) : xs[i]);
+    // `xFormat`/`yFormat` accept a d3-format string ("$,.0f", ".0%", "~s") or a
+    // function; they style the numeric axis tick labels (and numeric tooltips).
+    const xfmt = tickFormat(config.xFormat);
+    const xLabel = (i) => (timeX ? tipFmt(xvals[i]) : numericX ? xfmt(xs[i]) : xs[i]);
     const allY = series.flatMap((sr) => sr.values);
     // `yScale: 'log'` opts into a log value axis (positive data only); linear
     // (with a zero baseline) is the default.
-    const yi = buildScale({ type: config.yScale, values: allY, range: [plot.h, 0], includeZero: true, tickCount: 5 });
+    const yi = buildScale({ type: config.yScale, values: allY, range: [plot.h, 0], includeZero: true, tickCount: 5, format: config.yFormat });
     const y = yi.scale;
     this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
@@ -188,7 +191,7 @@ export class Line extends Chart {
       for (const t of x.ticks(6)) {
         const tx = plot.x0 + x(t);
         tick(ctx, tx, plot.y1, true, { color: ink });
-        this.text(String(t), tx, plot.y1 + 16, { size: 12 });
+        this.text(xfmt(t), tx, plot.y1 + 16, { size: 12 });
       }
     } else {
       xs.forEach((xv) => this.text(String(xv), plot.x0 + x(xv), plot.y1 + 16, { size: 12 }));

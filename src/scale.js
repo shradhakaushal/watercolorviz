@@ -1,17 +1,29 @@
 // Shared scale + tick helper.
 //
 // Charts build their continuous axes through buildScale() so scale type
-// (linear / log), tick selection and tick formatting live in one place. It
-// returns the d3 scale plus a ready list of tick values and a label formatter;
-// for log axes the formatter blanks the minor ticks (the classic decade look),
-// so callers draw a tick mark for every value but only a label where the
-// formatter returns a non-empty string.
+// (linear / log / time), tick selection and tick formatting live in one place.
+// It returns the d3 scale plus a ready list of tick values and a label
+// formatter; for log axes the formatter blanks the minor ticks (the classic
+// decade look), so callers draw a tick mark for every value but only a label
+// where the formatter returns a non-empty string.
 //
-//   const yi = buildScale({ type: config.yScale, values, range: [h, 0], includeZero: true });
+//   const yi = buildScale({ type: config.yScale, values, range: [h, 0], includeZero: true, format: config.yFormat });
 //   const y = yi.scale;
 //   for (const t of yi.ticks) { tick(...); const s = yi.format(t); if (s) text(s, ...); }
+//
+// `format` accepts a d3-format specifier string (e.g. ',.0f', '$,.0f', '.0%',
+// '~s') or a (value) => string function; it overrides the default labelling on
+// linear and log axes. Time axes keep their multi-scale date formatter.
 
 import * as d3 from 'd3';
+
+// Resolve a tick `format` (d3 specifier string, function, or nullish) into a
+// labelling function. Default is String().
+export function tickFormat(format) {
+  if (!format) return (v) => String(v);
+  if (typeof format === 'function') return format;
+  return d3.format(format);
+}
 
 export function buildScale({
   type = 'linear',
@@ -20,7 +32,10 @@ export function buildScale({
   includeZero = false,
   nice = true,
   tickCount = 5,
+  format,
 } = {}) {
+  const custom = format ? tickFormat(format) : null;
+
   if (type === 'time') {
     // Accept Date objects, epoch millis or parseable date strings.
     const dates = values.map((v) => (v instanceof Date ? v : new Date(v)));
@@ -28,8 +43,9 @@ export function buildScale({
     if (nice) scale.nice();
     const ticks = scale.ticks(tickCount);
     // d3's multi-scale time formatter labels each tick at the right resolution
-    // (year / month / day / hour) for the span being shown.
-    const f = scale.tickFormat();
+    // (year / month / day / hour) for the span being shown; a custom function
+    // (e.g. a d3.timeFormat) can override it.
+    const f = typeof format === 'function' ? format : scale.tickFormat();
     return { scale, type: 'time', ticks, format: (v) => f(v) };
   }
 
@@ -43,7 +59,8 @@ export function buildScale({
     const scale = d3.scaleLog().domain([lo, hi]).range(range);
     if (nice) scale.nice();
     const ticks = scale.ticks(tickCount);
-    const f = scale.tickFormat(tickCount);
+    // Default log formatter blanks minor ticks; a custom format labels them all.
+    const f = custom || scale.tickFormat(tickCount);
     return { scale, type: 'log', ticks, format: (v) => f(v) };
   }
 
@@ -57,5 +74,6 @@ export function buildScale({
   const scale = d3.scaleLinear().domain([lo, hi]).range(range);
   if (nice) scale.nice();
   const ticks = scale.ticks(tickCount);
-  return { scale, type: 'linear', ticks, format: (v) => String(v) };
+  const f = custom || ((v) => String(v));
+  return { scale, type: 'linear', ticks, format: (v) => f(v) };
 }
