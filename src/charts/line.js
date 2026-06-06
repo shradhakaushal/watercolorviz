@@ -58,7 +58,19 @@ function partialPolyline(points, progress) {
   return out;
 }
 
+// True when the data describes more than one series (→ an auto legend).
+function isMultiSeries(data = {}) {
+  const seriesObj = data.series && !Array.isArray(data.series);
+  const nested = Array.isArray(data.y) && Array.isArray(data.y[0]);
+  return Boolean(seriesObj || nested);
+}
+
 export class Line extends Chart {
+  legendReserve() {
+    if (this.config.legend === false) return 0;
+    return isMultiSeries(this.config.data) ? 30 : 0;
+  }
+
   render() {
     const { ctx, plot, seed, config, ink } = this;
     const xs = config.data.x;

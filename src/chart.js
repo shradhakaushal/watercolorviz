@@ -116,6 +116,12 @@ export class Chart {
       { top: 46, right: 30, bottom: 44, left: 48 },
       config.margin,
     );
+    // Subclasses that draw an auto legend below the plot (multi-series bar/line)
+    // reserve extra bottom margin so the legend clears the axis labels.
+    const reserve = this.legendReserve();
+    if (reserve && !(config.margin && config.margin.bottom != null)) {
+      this.margin.bottom += reserve;
+    }
 
     // The plot rectangle (inside the margins).
     const m = this.margin;
@@ -258,12 +264,35 @@ export class Chart {
 
   // L-shaped hand-drawn ink axes with little arrowheads (x along the bottom,
   // y up the left). Shared by the rectangular-wash charts.
+  // Extra bottom margin to reserve for an auto legend. Base charts reserve
+  // none; multi-series bar/line override this (see their legendReserve()).
+  legendReserve() {
+    return 0;
+  }
+
+  // The hand-drawn axis spines + arrowheads, drawn crisply over the paint.
+  // Configurable:
+  //   axes: false                 → draw no spines at all
+  //   xAxis / yAxis: false        → hide just that spine
+  //   xAxis: { position: 'top' }  → x spine along the top instead of bottom
+  //   yAxis: { position: 'right' }→ y spine along the right instead of left
+  //   axisArrows: false           → spines without the arrowheads
   drawAxisLines() {
-    const { ctx, plot, seed, ink } = this;
-    inkLine(ctx, plot.x0, plot.y1, plot.x1 + 8, plot.y1, { seed: seed + 1, color: ink });
-    arrowhead(ctx, plot.x1 + 12, plot.y1, 1, 0, { color: ink });
-    inkLine(ctx, plot.x0, plot.y1, plot.x0, plot.y0 - 8, { seed: seed + 2, color: ink });
-    arrowhead(ctx, plot.x0, plot.y0 - 12, 0, -1, { color: ink });
+    const { ctx, plot, seed, ink, config } = this;
+    if (config.axes === false) return;
+    const arrows = config.axisArrows !== false;
+    if (config.xAxis !== false) {
+      const pos = (config.xAxis && config.xAxis.position) || 'bottom';
+      const ay = pos === 'top' ? plot.y0 : plot.y1;
+      inkLine(ctx, plot.x0, ay, plot.x1 + 8, ay, { seed: seed + 1, color: ink });
+      if (arrows) arrowhead(ctx, plot.x1 + 12, ay, 1, 0, { color: ink });
+    }
+    if (config.yAxis !== false) {
+      const pos = (config.yAxis && config.yAxis.position) || 'left';
+      const ax = pos === 'right' ? plot.x1 : plot.x0;
+      inkLine(ctx, ax, plot.y1, ax, plot.y0 - 8, { seed: seed + 2, color: ink });
+      if (arrows) arrowhead(ctx, ax, plot.y0 - 12, 0, -1, { color: ink });
+    }
   }
 
   drawTitleAndLabels() {
@@ -414,9 +443,15 @@ export class Chart {
 
   // Shared key/legend. `items` = [{ label, color }]. Horizontal centred under
   // the plot by default; pass `orientation: 'vertical'` (+ x/y) for a corner key.
+  // Configurable via config: `legend: false` hides it; `legendGap` sets the gap
+  // below the axis labels; `legendX`/`legendY` pin an exact position;
+  // `legendOrientation: 'vertical'`.
   drawLegend(items, opts = {}) {
-    const { ctx, plot } = this;
-    const { orientation = 'horizontal', size = 11, swatch = 10 } = opts;
+    const { ctx, plot, config } = this;
+    if (config.legend === false) return;
+    const orientation = opts.orientation || config.legendOrientation || 'horizontal';
+    const size = opts.size ?? 11;
+    const swatch = opts.swatch ?? 10;
     const swatchAt = (x, y, color) => {
       ctx.save();
       ctx.globalAlpha = 0.85;
@@ -425,8 +460,8 @@ export class Chart {
       ctx.restore();
     };
     if (orientation === 'vertical') {
-      const x = opts.x ?? plot.x1 - 96;
-      let y = opts.y ?? plot.y0 + 8;
+      const x = opts.x ?? config.legendX ?? plot.x1 - 96;
+      let y = opts.y ?? config.legendY ?? plot.y0 + 8;
       for (const it of items) {
         swatchAt(x, y, it.color);
         this.text(it.label, x + swatch + 6, y, { size, align: 'left' });
@@ -436,8 +471,11 @@ export class Chart {
     }
     const w = (it) => swatch + 6 + it.label.length * size * 0.56 + 16;
     const total = items.reduce((a, it) => a + w(it), 0);
-    let x = opts.x ?? plot.x0 + Math.max(0, (plot.w - total) / 2);
-    const y = opts.y ?? plot.y1 + 24;
+    let x = opts.x ?? config.legendX ?? plot.x0 + Math.max(0, (plot.w - total) / 2);
+    // Sit clear below the axis labels (which live ~17px under the baseline),
+    // with a configurable gap; the matching bottom margin is reserved up front.
+    const gap = opts.gap ?? config.legendGap ?? 40;
+    const y = opts.y ?? config.legendY ?? plot.y1 + gap;
     for (const it of items) {
       swatchAt(x, y, it.color);
       this.text(it.label, x + swatch + 5, y, { size, align: 'left' });

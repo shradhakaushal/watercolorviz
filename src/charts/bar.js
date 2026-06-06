@@ -30,7 +30,20 @@ function normalizeSeries(data) {
   return [{ name: data.name || '', values: v }];
 }
 
+// True when the data describes more than one series (→ an auto legend).
+function isMultiSeries(data = {}) {
+  const seriesObj = data.series && !Array.isArray(data.series);
+  const nested = (Array.isArray(data.values) && Array.isArray(data.values[0])) ||
+    (Array.isArray(data.y) && Array.isArray(data.y[0]));
+  return Boolean(seriesObj || nested);
+}
+
 export class Bar extends Chart {
+  legendReserve() {
+    if (this.config.legend === false) return 0;
+    return isMultiSeries(this.config.data) ? 30 : 0;
+  }
+
   render() {
     const series = normalizeSeries(this.config.data);
     if (series.length > 1) {

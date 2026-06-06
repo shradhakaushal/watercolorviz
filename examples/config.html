@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz — axis & legend config</title>
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #e9e4d8;
+        color: #2c2a25;
+        font-family: 'Caveat', system-ui, sans-serif;
+        padding: 28px;
+      }
+      h1 { font-size: 26px; margin: 0 0 4px; }
+      p.lede { font-size: 18px; margin: 0 0 20px; opacity: 0.75; }
+      .grid { display: flex; flex-wrap: wrap; gap: 24px; }
+      figure { margin: 0; }
+      figcaption { font-size: 17px; margin-top: 6px; opacity: 0.8; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: #00000010; padding: 1px 5px; border-radius: 3px; }
+      canvas { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 watercolorviz — configurable axes & legend</h1>
+    <p class="lede">The axis spines and the legend are configurable on every cartesian chart.</p>
+    <div class="grid">
+      <figure><canvas id="c1"></canvas><figcaption>Default — legend spaced clear of the labels</figcaption></figure>
+      <figure><canvas id="c2"></canvas><figcaption><code>axes: false</code> — no spines</figcaption></figure>
+      <figure><canvas id="c3"></canvas><figcaption><code>xAxis:{position:'top'}, yAxis:{position:'right'}</code></figcaption></figure>
+      <figure><canvas id="c4"></canvas><figcaption><code>legend: false</code> — hidden (and no reserved space)</figcaption></figure>
+      <figure><canvas id="c5"></canvas><figcaption><code>legendOrientation:'vertical'</code> — corner key</figcaption></figure>
+      <figure><canvas id="c6"></canvas><figcaption><code>axisArrows: false</code> + <code>yAxis: false</code></figcaption></figure>
+    </div>
+
+    <script type="module">
+      const { Bar, Line } = await import('../src/index.js');
+
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.load('22px Caveat'); await document.fonts.ready; } catch (e) {}
+      }
+
+      const COLORS = ['#dc8068', '#e8b94f', '#94a854', '#6f93c2'];
+      const barData = {
+        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        series: { North: [28, 42, 35, 50], South: [20, 30, 40, 38], West: [15, 25, 30, 44] },
+      };
+      const lineData = {
+        x: [2018, 2019, 2020, 2021, 2022, 2023],
+        series: { Apples: [12, 19, 15, 27, 24, 31], Pears: [8, 11, 14, 12, 18, 20], Plums: [20, 17, 13, 16, 12, 9] },
+      };
+      const base = { data: barData, colors: COLORS, seed: 5, width: 430, height: 320 };
+
+      new Bar('#c1', { ...base, title: 'Default' });
+      new Bar('#c2', { ...base, title: 'No axes', axes: false });
+      new Bar('#c3', { ...base, title: 'Repositioned axes', xAxis: { position: 'top' }, yAxis: { position: 'right' } });
+      new Bar('#c4', { ...base, title: 'No legend', legend: false });
+      new Line('#c5', { data: lineData, colors: COLORS, seed: 7, width: 430, height: 320, title: 'Vertical key', legendOrientation: 'vertical' });
+      new Bar('#c6', { ...base, title: 'Clean axes', axisArrows: false, yAxis: false });
+    </script>
+  </body>
+</html>
