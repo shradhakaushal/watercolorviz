@@ -41,6 +41,14 @@ export function clearMarkCache() {
   _markCache.clear();
 }
 
+// Device-pixel ratio used for marks when none is passed explicitly. The Chart
+// base sets this to match the (scaled) canvas it draws on, so the offscreen
+// marks render at the same resolution as the crisp ink/text layer.
+let _renderDpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(3, window.devicePixelRatio) : 1;
+export function setRenderDpr(d) {
+  _renderDpr = d > 0 ? d : 1;
+}
+
 function deform(points, depth, variance, gauss, vdiv = 2) {
   let pts = points.map((p) => [p[0], p[1]]);
   let v = variance;
@@ -166,12 +174,17 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     paperScale = 0.16,
     seed = 1,
     cacheKey = null,
+    // Device-pixel ratio: render the offscreen mark at this resolution so it
+    // composites crisply onto a hi-DPI (retina) canvas. The drawing code stays
+    // in logical coordinates; only the backing store is denser. dpr=1 in Node.
+    dpr = _renderDpr,
   } = opts;
 
-  // Cache hit: just composite the previously-painted mark.
-  if (cacheKey && _markCache.has(cacheKey)) {
-    const c = _markCache.get(cacheKey);
-    ctx.drawImage(c.oc, c.ox, c.oy);
+  // Cache hit: just composite the previously-painted mark (at logical size).
+  const ckey = cacheKey == null ? null : `${cacheKey}@${dpr}`;
+  if (ckey && _markCache.has(ckey)) {
+    const c = _markCache.get(ckey);
+    ctx.drawImage(c.oc, c.ox, c.oy, c.w, c.h);
     return;
   }
 
@@ -212,8 +225,10 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
   const w = Math.ceil(maxx + margin) - ox;
   const h = Math.ceil(maxy + margin) - oy;
 
-  const oc = makeCanvas(w, h);
+  // Offscreen at device resolution; scale so all drawing uses logical coords.
+  const oc = makeCanvas(Math.ceil(w * dpr), Math.ceil(h * dpr));
   const octx = oc.getContext('2d');
+  octx.scale(dpr, dpr);
   octx.lineJoin = 'round';
 
   // Faint specks clipped to a polygon (optional; granulation usually suffices).
@@ -402,19 +417,25 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
   // or by lifting green/blue toward paper — this keeps RED high, exactly how
   // real pigment behaves, so washes never turn muddy/grey.
   if (granulation > 0 || mottle > 0 || shading > 0) {
-    const im = octx.getImageData(0, 0, w, h);
+    const W = oc.width;
+    const H = oc.height;
+    const im = octx.getImageData(0, 0, W, H);
     const dt = im.data;
     const mscale = paperScale * 0.1; // coarse, cloudy tonal field
     const dxl = Math.cos(lightAngle);
     const dyl = Math.sin(lightAngle);
-    for (let yy = 0; yy < h; yy++) {
-      for (let xx = 0; xx < w; xx++) {
-        const i = (yy * w + xx) * 4;
+    for (let yy = 0; yy < H; yy++) {
+      for (let xx = 0; xx < W; xx++) {
+        const i = (yy * W + xx) * 4;
         const a = dt[i + 3];
         if (a === 0) continue;
+        // Sample the noise/shading fields in LOGICAL (global) coords so they
+        // look identical at any dpr.
+        const lx = xx / dpr + ox;
+        const ly = yy / dpr + oy;
 
         if (granulation > 0) {
-          const n = fbm((xx + ox) * paperScale, (yy + oy) * paperScale, paperSeed, 4);
+          const n = fbm(lx * paperScale, ly * paperScale, paperSeed, 4);
           const peak = n > 0.5 ? (n - 0.5) * 2 : 0; // 0..1 on raised tooth
           dt[i + 3] = a * (1 - peak * granulation);
         }
@@ -423,8 +444,8 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
         let dilute = 0;
 
         if (shading > 0) {
-          const ndx = (xx + ox - cx) / r;
-          const ndy = (yy + oy - cy) / r;
+          const ndx = (lx - cx) / r;
+          const ndy = (ly - cy) / r;
           const dir = -(ndx * dxl + ndy * dyl); // +1 far side, -1 lit side
           if (dir > 0) deepen += dir * shading;
           else dilute += -dir * shading * 0.85;
@@ -433,8 +454,8 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
         if (mottle > 0) {
           // Two scales of noise → organic clouds rather than a single smooth
           // blob: a broad pooling field plus a medium-frequency break-up.
-          const nc = fbm((xx + ox) * mscale, (yy + oy) * mscale, seed + 23, 4);
-          const nc2 = fbm((xx + ox) * mscale * 2.9, (yy + oy) * mscale * 2.9, seed + 41, 3);
+          const nc = fbm(lx * mscale, ly * mscale, seed + 23, 4);
+          const nc2 = fbm(lx * mscale * 2.9, ly * mscale * 2.9, seed + 41, 3);
           const s = ((nc * 0.62 + nc2 * 0.38) - 0.5) * 2 * mottle; // signed pooling
           if (s > 0) deepen += s;
           else dilute += -s;
@@ -496,12 +517,14 @@ export function paintPolygon(ctx, basePoints, opts = {}) {
     octx.restore();
   }
 
-  // --- 5. Composite the finished mark onto the paper.
-  ctx.drawImage(oc, ox, oy);
+  // --- 5. Composite the finished mark onto the paper. The offscreen is at
+  // device resolution; draw it back at LOGICAL size so it lands crisp on a
+  // ctx that is itself scaled by dpr.
+  ctx.drawImage(oc, ox, oy, w, h);
 
-  if (cacheKey) {
+  if (ckey) {
     if (_markCache.size > 1000) _markCache.clear();
-    _markCache.set(cacheKey, { oc, ox, oy });
+    _markCache.set(ckey, { oc, ox, oy, w, h });
   }
 }
 

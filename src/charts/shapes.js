@@ -27,7 +27,13 @@ export function rectPoints(x, y, w, h, per = 5) {
 // shading, strong fine-grained granulation (cold-press tooth), gentle mottle,
 // dense enough to read as pigment. Bump CACHE_REV if the recipe changes so old
 // cached marks are not reused.
-const CACHE_REV = 1;
+const CACHE_REV = 2;
+
+// Global fill depth — every chart fill is a little DARKER than the raw engine
+// default so a lighter annotation highlight (band/callout) reads clearly on top
+// of it. Applied to every helper's intensity; raise/lower to taste. (Kept off
+// the raw paint engine so the standalone blob demo stays as tuned.)
+const FILL_DEPTH = 1.2;
 
 // --- Primitive B: arbitrary filled polygons (area / ridgeline / stacked) ---
 
@@ -101,7 +107,7 @@ function areaFillOpts(color, seed, intensity) {
   return {
     color,
     seed,
-    intensity,
+    intensity: intensity * FILL_DEPTH,
     boundaryMode: 'outline',
     bleed: 0.05, // gentle hand-painted edge along the curve
     shading: 0.18, // nearly flat
@@ -169,7 +175,7 @@ export function wedgePolygon(cx, cy, r0, r1, a0, a1, segs = 28) {
 export function paintWedge(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
   const { color, seed = 1, intensity = 1.0, ink } = opts;
   paintPolygon(ctx, densify(wedgePolygon(cx, cy, r0, r1, a0, a1), 14), {
-    color, seed, intensity,
+    color, seed, intensity: intensity * FILL_DEPTH,
     boundaryMode: 'outline', bleed: 0.035, shading: 0.2, mottle: 0.3,
     granulation: 0.45, paperScale: 0.28, outline: true, outlineWidth: 1.6, outlineColor: ink,
   });
@@ -179,7 +185,7 @@ export function paintWedge(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
 export function paintClosedWash(ctx, points, opts = {}) {
   const { color, seed = 1, intensity = 0.85, outline = true, ink } = opts;
   paintPolygon(ctx, densify(points, 14), {
-    color, seed, intensity,
+    color, seed, intensity: intensity * FILL_DEPTH,
     boundaryMode: 'outline', bleed: 0.04, shading: 0.18, mottle: 0.3,
     granulation: 0.4, paperScale: 0.28, outline, outlineWidth: 1.5, outlineColor: ink,
   });
@@ -190,7 +196,7 @@ export function paintClosedWash(ctx, points, opts = {}) {
 export function paintDot(ctx, cx, cy, r, opts = {}) {
   const { color, seed = 1, intensity = 0.9, outline = false, ink } = opts;
   paintPolygon(ctx, regularPolygon(cx, cy, r, 28), {
-    color, seed, intensity,
+    color, seed, intensity: intensity * FILL_DEPTH,
     bleed: 0.06, shading: 0.3, mottle: 0.3, granulation: 0.35, paperScale: 0.26,
     outline, outlineWidth: 1.3, outlineColor: ink,
   });
@@ -204,7 +210,7 @@ export function paintRectWash(ctx, x, y, w, h, opts = {}) {
     color,
     seed,
     outline,
-    intensity,
+    intensity: intensity * FILL_DEPTH,
     outlineColor: ink,
     bleed: 0.03, // keep it rectangular; just a hand-painted waver
     shading: 0.15, // a flat matte wash — NOT a glossy 3D gradient
