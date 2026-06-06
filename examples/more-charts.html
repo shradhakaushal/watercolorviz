@@ -33,6 +33,9 @@
       <canvas id="donut"></canvas>
       <canvas id="radar"></canvas>
       <canvas id="line"></canvas>
+      <canvas id="multiline"></canvas>
+      <canvas id="logline"></canvas>
+      <canvas id="timeline"></canvas>
       <canvas id="network"></canvas>
       <canvas id="sankey"></canvas>
     </div>
@@ -68,6 +71,34 @@
       });
 
       new Line('#line', { title: 'Line Graph', data: { x: ['A', 'B', 'C', 'D', 'E'], y: [20, 45, 30, 55, 38] }, colors: MUTED, color: '#6f93c2', seed: 9 });
+
+      new Line('#multiline', {
+        title: 'Multi-series Line',
+        data: {
+          x: [2018, 2019, 2020, 2021, 2022, 2023],
+          series: {
+            Apples: [12, 19, 15, 27, 24, 31],
+            Pears: [8, 11, 14, 12, 18, 20],
+            Plums: [20, 17, 13, 16, 12, 9],
+          },
+        },
+        colors: MUTED, seed: 7,
+      });
+
+      new Line('#logline', {
+        title: 'Log Scale (yScale: "log")',
+        data: { x: [1, 2, 3, 4, 5, 6, 7, 8], y: [2, 6, 18, 60, 180, 520, 1600, 5000] },
+        color: '#6f93c2', seed: 9, yScale: 'log', yLabel: 'views',
+      });
+
+      new Line('#timeline', {
+        title: 'Time Scale (Date x-axis)',
+        data: {
+          x: Array.from({ length: 12 }, (_, i) => new Date(2025, i, 1)),
+          y: [20, 24, 22, 30, 28, 35, 40, 38, 33, 29, 26, 31],
+        },
+        color: '#94a854', seed: 5, yLabel: 'k$',
+      });
 
       new Network('#network', {
         title: 'Network Graph',

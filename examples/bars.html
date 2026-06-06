@@ -39,6 +39,7 @@
   <body>
     <h1>🎨 watercolorviz — bar chart</h1>
     <canvas id="a"></canvas>
+    <canvas id="grouped"></canvas>
 
     <script type="module">
       const { Bar } = await import('../src/index.js');
@@ -61,6 +62,21 @@
         colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2', '#a07fbb'],
         yLabel: 'value',
         seed: 7,
+      });
+
+      new Bar('#grouped', {
+        title: 'Grouped Bars',
+        data: {
+          labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+          series: {
+            North: [28, 42, 35, 50],
+            South: [20, 30, 40, 38],
+            West: [15, 25, 30, 44],
+          },
+        },
+        colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2'],
+        yLabel: 'sales',
+        seed: 5,
       });
     </script>
   </body>
