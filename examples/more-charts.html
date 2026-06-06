@@ -33,6 +33,7 @@
       <canvas id="donut"></canvas>
       <canvas id="radar"></canvas>
       <canvas id="line"></canvas>
+      <canvas id="multiline"></canvas>
       <canvas id="network"></canvas>
       <canvas id="sankey"></canvas>
     </div>
@@ -68,6 +69,19 @@
       });
 
       new Line('#line', { title: 'Line Graph', data: { x: ['A', 'B', 'C', 'D', 'E'], y: [20, 45, 30, 55, 38] }, colors: MUTED, color: '#6f93c2', seed: 9 });
+
+      new Line('#multiline', {
+        title: 'Multi-series Line',
+        data: {
+          x: [2018, 2019, 2020, 2021, 2022, 2023],
+          series: {
+            Apples: [12, 19, 15, 27, 24, 31],
+            Pears: [8, 11, 14, 12, 18, 20],
+            Plums: [20, 17, 13, 16, 12, 9],
+          },
+        },
+        colors: MUTED, seed: 7,
+      });
 
       new Network('#network', {
         title: 'Network Graph',
