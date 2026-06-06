@@ -10,6 +10,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
+import { buildScale } from '../scale.js';
 import { paintDot, paintDotSelection } from './shapes.js';
 
 // Normalise the data into a list of { name, values }. A flat `y` array is one
@@ -90,12 +91,14 @@ export class Line extends Chart {
       ? d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w])
       : d3.scalePoint().domain(xs).range([0, plot.w]);
     const allY = series.flatMap((sr) => sr.values);
-    const lo = Math.min(0, d3.min(allY));
-    const y = d3.scaleLinear().domain([lo, d3.max(allY)]).nice().range([plot.h, 0]);
+    // `yScale: 'log'` opts into a log value axis (positive data only); linear
+    // (with a zero baseline) is the default.
+    const yi = buildScale({ type: config.yScale, values: allY, range: [plot.h, 0], includeZero: true, tickCount: 5 });
+    const y = yi.scale;
     this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     if (config.grid !== false) {
-      for (const t of y.ticks(5)) {
+      for (const t of yi.ticks) {
         const gy = plot.y0 + y(t);
         inkLine(ctx, plot.x0, gy, plot.x1, gy, { color: ink, opacity: 0.08, width: 1, jitter: 0.5, seed: seed + t });
       }
@@ -155,10 +158,11 @@ export class Line extends Chart {
       });
     });
 
-    for (const t of y.ticks(5)) {
+    for (const t of yi.ticks) {
       const ty = plot.y0 + y(t);
       tick(ctx, plot.x0, ty, false, { color: ink });
-      this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
+      const lab = yi.format(t);
+      if (lab) this.text(lab, plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
     if (numericX) {
       for (const t of x.ticks(6)) {

@@ -34,6 +34,7 @@
       <canvas id="radar"></canvas>
       <canvas id="line"></canvas>
       <canvas id="multiline"></canvas>
+      <canvas id="logline"></canvas>
       <canvas id="network"></canvas>
       <canvas id="sankey"></canvas>
     </div>
@@ -81,6 +82,12 @@
           },
         },
         colors: MUTED, seed: 7,
+      });
+
+      new Line('#logline', {
+        title: 'Log Scale (yScale: "log")',
+        data: { x: [1, 2, 3, 4, 5, 6, 7, 8], y: [2, 6, 18, 60, 180, 520, 1600, 5000] },
+        color: '#6f93c2', seed: 9, yScale: 'log', yLabel: 'views',
       });
 
       new Network('#network', {
