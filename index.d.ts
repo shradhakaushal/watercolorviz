@@ -285,7 +285,7 @@ export interface LikertConfig extends BaseConfig {
 }
 
 export interface CalendarConfig extends BaseConfig {
-  data: { values: Array<{ date: string | Date; value: number }> } | { dates: Array<string | Date>; values: number[] };
+  data: { days: Array<{ date: string | Date; value: number }> };
 }
 
 export interface ChordConfig extends BaseConfig {
@@ -293,7 +293,7 @@ export interface ChordConfig extends BaseConfig {
 }
 
 export interface SparklineConfig extends BaseConfig {
-  data: { values: number[] } | { y: number[] };
+  data: number[] | { y: number[] };
 }
 
 // --- Chart classes -----------------------------------------------------------
