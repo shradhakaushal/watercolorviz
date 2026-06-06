@@ -5,7 +5,7 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { shades } from '../palette.js';
+import { shades, sequential } from '../palette.js';
 import { inkPath, tick } from '../axes.js';
 import { bandPolygon, paintBandWash, paintPolygonSelection, withRevealClip } from './shapes.js';
 
@@ -13,10 +13,34 @@ export class StackedArea extends Chart {
   render() {
     const { ctx, plot, seed, config, ink } = this;
     const xs = config.data.x;
-    const series = config.data.series; // { name: [values...] }
-    const names = Object.keys(series);
     const stream = config.stream;
     this.paintBackground();
+
+    // Readability cap: too many bands turn a watercolor streamgraph to mush.
+    // Keep the largest (maxSeries-1) and collapse the rest into an "Other" band.
+    let series = config.data.series; // { name: [values...] }
+    let names = Object.keys(series);
+    const maxSeries = config.maxSeries ?? 8;
+    if (names.length > maxSeries) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn(
+          `watercolorviz: ${names.length} series exceeds maxSeries=${maxSeries}; ` +
+          (config.groupOther === false ? 'rendering all (groupOther:false).' : 'collapsing the smallest into "Other".'),
+        );
+      }
+      if (config.groupOther !== false) {
+        const ranked = names
+          .map((nm) => ({ nm, total: series[nm].reduce((s, v) => s + v, 0) }))
+          .sort((a, b) => b.total - a.total);
+        const keep = ranked.slice(0, maxSeries - 1).map((d) => d.nm);
+        const drop = ranked.slice(maxSeries - 1).map((d) => d.nm);
+        const grouped = {};
+        keep.forEach((nm) => { grouped[nm] = series[nm]; });
+        grouped.Other = xs.map((_, i) => drop.reduce((s, nm) => s + series[nm][i], 0));
+        series = grouped;
+        names = Object.keys(series);
+      }
+    }
 
     const rows = xs.map((xv, i) => {
       const row = { x: xv };
@@ -37,14 +61,20 @@ export class StackedArea extends Chart {
     const y = d3.scaleLinear().domain(yDomain).nice().range([plot.h, 0]);
     this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
-    // Colour mode: an explicit `colors` array → distinct hues with ink edges;
-    // otherwise a monochromatic dark→light ramp with white separators.
+    // Colour mode. Explicit `colors` → those hues. A single `color` → a
+    // monochromatic dark→light ramp. Otherwise a viridis-style SEQUENTIAL
+    // palette (good for ordered stacked layers, like the reference).
     const useRamp = !(Array.isArray(config.colors) && config.colors.length);
-    const colors = useRamp
-      ? shades(config.color || '#3f7fb0', names.length)
-      : names.map((_, si) => this.colorFor(si));
-    const sepColor = config.separator || (useRamp ? '#fdf8f0' : ink);
-    const sepOpacity = useRamp ? 0.85 : 0.6;
+    const colors = !useRamp
+      ? names.map((_, si) => this.colorFor(si))
+      : config.color
+        ? shades(config.color, names.length)
+        : sequential(names.length);
+    // Boundary lines: with watercolor it's unclear where one band ends, so every
+    // band is fully enclosed by a crisp, continuous, near-black line by default
+    // (configurable). Explicit-colour mode keeps the warm ink edge.
+    const sepColor = config.separator || config.boundaryColor || (useRamp ? '#141414' : ink);
+    const sepOpacity = config.boundaryOpacity ?? (useRamp ? 0.92 : 0.6);
 
     // Bands are drawn bottom→top; extend each band's bottom a few px DOWN into
     // the band already painted below it, so the hand-painted edges overlap and
@@ -81,11 +111,20 @@ export class StackedArea extends Chart {
           progress: this.selectionProgress(mark.index),
         });
       });
+      // Boundaries: each band's top (= its neighbour's bottom) plus, for a
+      // stream, the lower silhouette — so every layer is fully enclosed.
+      const boundaryWidth = config.boundaryWidth ?? 1.15;
       marks.forEach((mark) => {
         withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, this.loadProgress(mark.index), () => {
-          inkPath(ctx, mark.top, { seed: mark.seed, width: 1.4, opacity: sepOpacity, color: sepColor, gaps: false });
+          inkPath(ctx, mark.top, { seed: mark.seed, width: boundaryWidth, opacity: sepOpacity, color: sepColor, gaps: false, uniform: true });
         });
       });
+      if (stream && config.boundary !== false) {
+        const bottomSil = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(d3.min(stack, (layer) => layer[i][0]))]);
+        withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, this.loadProgress(names.length - 1), () => {
+          inkPath(ctx, bottomSil, { seed: seed + 999, width: boundaryWidth, opacity: sepOpacity, color: sepColor, gaps: false, uniform: true });
+        });
+      }
     }, { bottom: !stream });
     this.setInteractiveMarks(marks);
 
