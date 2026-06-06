@@ -6,7 +6,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { tick } from '../axes.js';
-import { paintDot } from './shapes.js';
+import { paintDot, paintDotSelection } from './shapes.js';
 
 export class Scatter extends Chart {
   render() {
@@ -39,9 +39,21 @@ export class Scatter extends Chart {
       const cx = plot.x0 + x(xv);
       const cy = plot.y0 + y(ys[i]);
       const r = rs ? rScale(rs[i]) : config.radius || 8;
-      const color = this.colorFor(i);
-      paintDot(ctx, cx, cy, r, { color, seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
-      marks.push({ index: i, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, color, label: rs ? `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)} · ${Math.round(rs[i])}` : `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)}` });
+      const reveal = this.loadProgress(i);
+      if (reveal > 0) {
+        const scale = 0.72 + reveal * 0.28;
+        ctx.save();
+        ctx.globalAlpha = 0.25 + reveal * 0.75;
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+        paintDot(ctx, 0, 0, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
+        ctx.restore();
+      }
+      paintDotSelection(ctx, cx, cy, r, {
+        color: this.colorFor(i),
+        progress: this.selectionProgress(i),
+      });
+      marks.push({ index: i, cx, cy, r, color: this.colorFor(i), label: rs ? `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)} · ${Math.round(rs[i])}` : `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)}` });
     });
     this.setInteractiveMarks(marks);
 
@@ -50,5 +62,6 @@ export class Scatter extends Chart {
 
     this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(xs.length);
   }
 }

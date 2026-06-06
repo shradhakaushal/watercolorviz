@@ -5,7 +5,7 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { paintWedge, wedgePolygon } from './shapes.js';
+import { paintWedge, paintWedgeSelection, wedgePolygon } from './shapes.js';
 
 export class Pie extends Chart {
   render() {
@@ -19,27 +19,37 @@ export class Pie extends Chart {
     const r0 = (config.innerRadius || 0) * r1;
 
     const total = d3.sum(values);
-    const marks = [];
     let a = -Math.PI / 2; // start at 12 o'clock
+    const marks = [];
     values.forEach((v, i) => {
       const a1 = a + (v / total) * Math.PI * 2;
-      const color = this.colorFor(i);
-      paintWedge(ctx, cx, cy, r0, r1, a, a1, { color, seed: seed + i * 13, ink });
-      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, r1, a, a1), color, label: `${labels[i]}: ${v} (${Math.round((v / total) * 100)}%)` });
+      const reveal = this.loadProgress(i);
+      const drawA1 = a + (a1 - a) * reveal;
+      if (reveal > 0.01) {
+        paintWedge(ctx, cx, cy, r0, r1, a, drawA1, { color: this.colorFor(i), seed: seed + i * 13, ink });
+      }
+      paintWedgeSelection(ctx, cx, cy, r0, r1, a, a1, {
+        color: this.colorFor(i),
+        progress: this.selectionProgress(i),
+      });
       const mid = (a + a1) / 2;
       // category label just outside the rim
       const lr = r1 + 16;
-      this.text(labels[i], cx + Math.cos(mid) * lr, cy + Math.sin(mid) * lr, { size: 13 });
+      if (reveal > 0.92) {
+        this.text(labels[i], cx + Math.cos(mid) * lr, cy + Math.sin(mid) * lr, { size: 13 });
+      }
       // percentage inside the slice (skip if the slice is too thin to fit)
       const pct = Math.round((v / total) * 100);
-      if (config.percent !== false && a1 - a > 0.25) {
+      if (reveal > 0.92 && config.percent !== false && a1 - a > 0.25) {
         const ir = r0 + (r1 - r0) * (r0 > 0 ? 0.5 : 0.62);
         this.text(`${pct}%`, cx + Math.cos(mid) * ir, cy + Math.sin(mid) * ir, { size: 12 });
       }
+      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, r1, a, a1, 36), color: this.colorFor(i), label: `${labels[i]}: ${v} (${pct}%)` });
       a = a1;
     });
-    this.setInteractiveMarks(marks);
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
+    this.setInteractiveMarks(marks);
+    this.scheduleLoadAnimation(values.length);
   }
 }

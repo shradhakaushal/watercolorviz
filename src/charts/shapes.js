@@ -202,6 +202,88 @@ export function paintDot(ctx, cx, cy, r, opts = {}) {
   });
 }
 
+export function paintDotSelection(ctx, cx, cy, r, opts = {}) {
+  const { color = '#3f7fb0', progress = 0, glow = true } = opts;
+  if (progress <= 0.01 || r <= 0) return;
+
+  const p = 1 - Math.pow(1 - progress, 3);
+  const { deep } = deepPigment(color);
+  const fillPts = regularPolygon(cx, cy, r, 32);
+  const lineWidth = Math.min(3.2, Math.max(1.6, r * 0.22));
+  const boundaryR = Math.max(1, r - lineWidth / 2);
+  const boundaryPts = regularPolygon(cx, cy, boundaryR, 32);
+
+  if (glow) {
+    ctx.save();
+    tracePoints(ctx, boundaryPts);
+    ctx.shadowColor = `rgba(255,224,146,${0.5 * p})`;
+    ctx.shadowBlur = 9 * p;
+    ctx.strokeStyle = `rgba(0,0,0,${0.06 * p})`;
+    ctx.lineWidth = Math.max(2, lineWidth * 2.2);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.save();
+  tracePoints(ctx, fillPts);
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.22 * p})`;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  tracePoints(ctx, fillPts);
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.14 * p})`;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  tracePoints(ctx, boundaryPts);
+  ctx.strokeStyle = `rgba(0,0,0,${0.94 * p})`;
+  ctx.lineWidth = lineWidth;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function paintWedgeSelection(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
+  const { color = '#3f7fb0', progress = 0 } = opts;
+  if (progress <= 0.01 || r1 <= 0 || a1 <= a0) return;
+
+  const p = 1 - Math.pow(1 - progress, 3);
+  const { deep } = deepPigment(color);
+  const pts = wedgePolygon(cx, cy, r0, r1, a0, a1, 36);
+
+  ctx.save();
+  tracePoints(ctx, pts);
+  ctx.shadowColor = `rgba(255,224,146,${0.42 * p})`;
+  ctx.shadowBlur = 12 * p;
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.24 * p})`;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  tracePoints(ctx, pts);
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.18 * p})`;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  tracePoints(ctx, pts);
+  ctx.clip();
+  tracePoints(ctx, pts);
+  ctx.strokeStyle = `rgba(0,0,0,${0.95 * p})`;
+  ctx.lineWidth = 2 + p * 1.2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function paintRectWash(ctx, x, y, w, h, opts = {}) {
   const { color, seed = 1, outline = true, intensity = 1.1, ink } = opts;
   // Content-addressed cache key: identical geometry+color+seed reuses the paint.
@@ -311,7 +393,7 @@ export function paintRectSelection(ctx, x, y, w, h, opts = {}) {
   if (progress <= 0.01) return;
 
   const p = 1 - Math.pow(1 - progress, 3);
-  const { rgb: [r, g, b], deep } = deepPigment(color);
+  const { deep } = deepPigment(color);
   const perimeter = 2 * (w + h);
 
   ctx.save();
@@ -327,7 +409,7 @@ export function paintRectSelection(ctx, x, y, w, h, opts = {}) {
 
   ctx.save();
   traceSketchRect(ctx, x, y, w, h, seed + 41, 1.2);
-  ctx.strokeStyle = `rgba(${r},${g},${b},${0.22 * p})`;
+  ctx.strokeStyle = `rgba(0,0,0,${0.16 * p})`;
   ctx.lineWidth = 4 + p * 2;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
@@ -338,7 +420,7 @@ export function paintRectSelection(ctx, x, y, w, h, opts = {}) {
   traceSketchRect(ctx, x, y, w, h, seed + 11, 0.8);
   ctx.setLineDash([Math.max(1, perimeter * p), perimeter]);
   ctx.lineDashOffset = -perimeter * 0.04;
-  ctx.strokeStyle = `rgba(59,51,43,${0.78 * p})`;
+  ctx.strokeStyle = `rgba(0,0,0,${0.92 * p})`;
   ctx.lineWidth = 1.4 + p * 1.2;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
@@ -347,11 +429,29 @@ export function paintRectSelection(ctx, x, y, w, h, opts = {}) {
 }
 
 export function paintPolygonSelection(ctx, points, opts = {}) {
-  const { color = '#3f7fb0', progress = 0, outlinePoints = points, closedOutline = true } = opts;
+  const {
+    color = '#3f7fb0',
+    progress = 0,
+    outlinePoints = points,
+    closedOutline = true,
+    lift = 3,
+    boundaryStrength = 1,
+    glowStrength = 1,
+  } = opts;
   if (progress <= 0.01 || !points || points.length < 3) return;
 
   const p = 1 - Math.pow(1 - progress, 3);
-  const { rgb: [r, g, b], deep } = deepPigment(color);
+  const { deep } = deepPigment(color);
+  const traceOutline = closedOutline ? tracePoints : traceOpenPoints;
+
+  ctx.save();
+  tracePoints(ctx, points);
+  ctx.shadowColor = `rgba(55,45,36,${0.24 * p})`;
+  ctx.shadowBlur = 7 * p;
+  ctx.shadowOffsetY = lift * p;
+  ctx.fillStyle = `rgba(55,45,36,${0.035 * p})`;
+  ctx.fill();
+  ctx.restore();
 
   ctx.save();
   tracePoints(ctx, points);
@@ -362,16 +462,19 @@ export function paintPolygonSelection(ctx, points, opts = {}) {
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   tracePoints(ctx, points);
-  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.14 * p})`;
+  ctx.fillStyle = `rgba(${deep[0]},${deep[1]},${deep[2]},${0.13 * p})`;
   ctx.fill();
   ctx.restore();
 
   if (outlinePoints && outlinePoints.length > 1) {
-    const traceOutline = closedOutline ? tracePoints : traceOpenPoints;
     ctx.save();
+    tracePoints(ctx, points);
+    ctx.clip();
     traceOutline(ctx, outlinePoints);
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.24 * p})`;
-    ctx.lineWidth = 5 + p * 2;
+    ctx.shadowColor = `rgba(255,224,146,${0.56 * glowStrength * p})`;
+    ctx.shadowBlur = 12 * glowStrength * p;
+    ctx.strokeStyle = `rgba(0,0,0,${0.07 * p})`;
+    ctx.lineWidth = 5 + p * 5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.stroke();
@@ -379,8 +482,17 @@ export function paintPolygonSelection(ctx, points, opts = {}) {
 
     ctx.save();
     traceOutline(ctx, outlinePoints);
-    ctx.strokeStyle = `rgba(59,51,43,${0.54 * p})`;
-    ctx.lineWidth = 1.2 + p * 0.9;
+    ctx.strokeStyle = `rgba(0,0,0,${0.16 * p})`;
+    ctx.lineWidth = 4 + p * (2.2 * boundaryStrength);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    traceOutline(ctx, outlinePoints);
+    ctx.strokeStyle = `rgba(0,0,0,${0.94 * p})`;
+    ctx.lineWidth = 1.45 + p * (1.05 * boundaryStrength);
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.stroke();

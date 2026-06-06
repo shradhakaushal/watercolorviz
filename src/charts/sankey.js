@@ -11,7 +11,12 @@
 //   }
 
 import { Chart } from '../chart.js';
-import { paintRectWash, paintFillWash } from './shapes.js';
+import {
+  paintFillWash,
+  paintPolygonSelection,
+  paintRectSelection,
+  paintRectWash,
+} from './shapes.js';
 
 // Sampled horizontal cubic bezier from (x0,y0) to (x1,y1) — the classic Sankey
 // S-curve (control points pulled to the horizontal midpoint).
@@ -26,6 +31,20 @@ function ribbonEdge(x0, y0, x1, y1, segs = 32) {
     pts.push([x, y]);
   }
   return pts;
+}
+
+function boundsFor(points) {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const [x, y] of points) {
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 export class Sankey extends Chart {
@@ -97,6 +116,14 @@ export class Sankey extends Chart {
     // Links (ribbons) under the nodes; attachments stack along each node edge.
     const outOff = new Array(N).fill(0);
     const inOff = new Array(N).fill(0);
+    const flowMarks = [];
+    const linkProgress = links.map((_, li) => this.selectionProgress(li));
+    const active = Math.max(0, ...linkProgress);
+    const nodeFocus = new Array(N).fill(0);
+    links.forEach((l, li) => {
+      nodeFocus[l.source] = Math.max(nodeFocus[l.source], linkProgress[li]);
+      nodeFocus[l.target] = Math.max(nodeFocus[l.target], linkProgress[li]);
+    });
     links.forEach((l, li) => {
       const s = rect[l.source];
       const t = rect[l.target];
@@ -108,23 +135,61 @@ export class Sankey extends Chart {
       const sx = s.x + s.w;
       const tx = t.x;
       const poly = ribbonEdge(sx, sy, tx, ty).concat(ribbonEdge(tx, ty + h, sx, sy + h));
+      flowMarks.push({
+        index: li,
+        points: poly,
+        ...boundsFor(poly),
+        hitPad: 0,
+        source: l.source,
+        target: l.target,
+        color: config.linkColor || this.colorFor(l.source),
+        label: `${names[l.source]} → ${names[l.target]}: ${l.value}`,
+      });
       const color = config.linkColor || this.colorFor(l.source);
       // Low bleed → cleaner ribbon edges (a polished Sankey, not a wavy blob);
       // `soft: true` loosens the boundaries so it reads less like plumbing.
       const flowBleed = config.flowBleed ?? (config.soft ? 0.05 : 0.012);
       const flowIntensity = config.linkIntensity ?? (config.soft ? 0.42 : 0.58);
+      const reveal = this.loadProgress(li);
+      const fade = active > 0 && linkProgress[li] <= 0 ? 1 - active * 0.38 : 1;
+      ctx.save();
+      ctx.globalAlpha = (0.25 + reveal * 0.75) * fade;
+      ctx.beginPath();
+      ctx.rect(plot.x0, plot.y0, plot.w * reveal, plot.h);
+      ctx.clip();
       paintFillWash(ctx, poly, { color, seed: seed + li * 7, intensity: flowIntensity, ink, bleed: flowBleed });
+      ctx.restore();
+    });
+
+    flowMarks.forEach((mark) => {
+      paintPolygonSelection(ctx, mark.points, {
+        color: mark.color,
+        outlinePoints: mark.points,
+        closedOutline: true,
+        boundaryStrength: 0.82,
+        glowStrength: 0.9,
+        progress: this.selectionProgress(mark.index),
+      });
     });
 
     // Nodes + labels. Labels sit OUTSIDE the flow: left column to the left,
     // right column to the right, interior columns above their node.
-    const marks = [];
     names.forEach((name, i) => {
       const r = rect[i];
-      const color = this.colorFor(i);
-      paintRectWash(ctx, r.x, r.y, r.w, r.h, { color, seed: seed + 100 + i, ink });
-      marks.push({ index: i, x: r.x, y: r.y, w: r.w, h: r.h, hitPad: 6, color, label: `${name}: ${Math.round(nodeValue[i])}` });
+      const reveal = this.loadProgress(links.length + i);
+      const fade = active > 0 && nodeFocus[i] <= 0 ? 1 - active * 0.2 : 1;
+      ctx.save();
+      ctx.globalAlpha = (0.3 + reveal * 0.7) * fade;
+      paintRectWash(ctx, r.x, r.y, r.w, r.h, { color: this.colorFor(i), seed: seed + 100 + i, ink });
+      ctx.restore();
+      paintRectSelection(ctx, r.x, r.y, r.w, r.h, {
+        color: this.colorFor(i),
+        seed: seed + 100 + i,
+        progress: nodeFocus[i] * 0.85,
+      });
       const cy = r.y + r.h / 2;
+      ctx.save();
+      ctx.globalAlpha = fade;
       if (layer[i] === 0) {
         this.text(name, r.x - 7, cy, { size: 12, align: 'right' });
       } else if (layer[i] === maxLayer) {
@@ -132,9 +197,11 @@ export class Sankey extends Chart {
       } else {
         this.text(name, r.x + r.w / 2, r.y - 9, { size: 12, align: 'center' });
       }
+      ctx.restore();
     });
-    this.setInteractiveMarks(marks);
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
+    this.setInteractiveMarks(flowMarks);
+    this.scheduleLoadAnimation(links.length + N);
   }
 }

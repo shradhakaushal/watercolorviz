@@ -313,6 +313,12 @@ export class Chart {
         if (mark.points && pointInPolygon(x, y, mark.points)) {
           return mark.index;
         }
+        if (mark.cx != null && mark.cy != null && mark.r != null) {
+          const pad = mark.hitPad ?? 4;
+          if (Math.hypot(x - mark.cx, y - mark.cy) <= mark.r + pad) {
+            return mark.index;
+          }
+        }
         const pad = mark.hitPad ?? 4;
         if (mark.x == null || mark.y == null || mark.w == null || mark.h == null) continue;
         if (
