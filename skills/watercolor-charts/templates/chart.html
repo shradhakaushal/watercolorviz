@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  watercolorviz chart — self-contained, zero install.
+  Loaded from jsdelivr's +esm bundle, which auto-resolves d3. Just open this file.
+
+  TO CUSTOMISE:
+   • Change the import to the chart class(es) you need.
+   • Replace the `data` object and options (see the skill's reference/chart-api.md).
+   • Keep the Caveat font link — it carries half the aesthetic.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Watercolor chart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+           background: #f3ece0; font-family: "Caveat", system-ui, sans-serif; }
+    #chart { background: transparent; }
+    /* Optional: a "save PNG" button. Remove if not wanted. */
+    #save { position: fixed; top: 16px; right: 16px; font: 16px "Caveat", cursive;
+            padding: 6px 14px; border: 1.5px solid #3b332b; border-radius: 8px;
+            background: #fffaf2; color: #3b332b; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="chart"></canvas>
+  <button id="save">save png</button>
+
+  <script type="module">
+    import { Bar } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.0/+esm';
+
+    const chart = new Bar('#chart', {
+      title: 'Quarterly revenue',     // chrome: title (top, centered)
+      xLabel: 'quarter',              // chrome: x-axis label (bottom)
+      yLabel: 'USD (millions)',       // chrome: y-axis label (left, rotated)
+      data: {
+        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        values: [30, 55, 42, 61],
+      },
+      width: 720,
+      height: 460,
+      seed: 7,            // deterministic watercolor texture
+      // colors: ['#dc8068', '#e8b94f', '#94a854', '#6f93c2'],
+      // ink: '#3b332b', paper: '#f9f1e6',
+      interactive: true,
+      tooltip: true,
+      // x and y axes render by default; hide with axes:false / xAxis:false / yAxis:false.
+      annotations: [
+        // Bar uses the category label as the x data-coord (e.g. ['Q4', 61]).
+        { type: 'circle',  at: ['Q4', 61], r: 24 },
+        { type: 'callout', at: ['50%', '18%'], to: ['Q4', 61], text: 'best quarter' },
+        // ⚠ arrow uses from/to, NOT at:
+        { type: 'arrow',   from: ['Q1', 30], to: ['Q2', 55] },
+      ],
+      annotationColor: '#c8604f',
+    });
+
+    // Save-to-PNG (optional).
+    document.getElementById('save').onclick = () => {
+      const a = document.createElement('a');
+      a.href = chart.toDataURL('image/png');
+      a.download = 'watercolor-chart.png';
+      a.click();
+    };
+  </script>
+</body>
+</html>
