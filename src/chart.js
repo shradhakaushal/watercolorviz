@@ -7,6 +7,7 @@
 // `render()`.
 
 import { paintPaper } from './paper.js';
+import { setRenderDpr } from './watercolor.js';
 import { inkLine, arrowhead, INK } from './axes.js';
 import { colorAt } from './palette.js';
 import { annotateArrow, annotateCircle, annotateText, annotateCallout, annotateBand, annotateBracket } from './annotate.js';
@@ -32,11 +33,22 @@ export class Chart {
       canvas = document.createElement('canvas');
       target.appendChild(canvas);
     }
-    canvas.width = width;
-    canvas.height = height;
+    // Hi-DPI: back the canvas at device resolution, present at CSS (logical)
+    // size, and scale the context so all drawing stays in logical coords —
+    // text, ink and marks all land crisp on retina screens.
+    const dpr = config.dpr || (typeof window !== 'undefined' && window.devicePixelRatio ? Math.min(3, window.devicePixelRatio) : 1);
+    this.dpr = dpr;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    if (canvas.style) {
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    }
 
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    this.ctx.scale(dpr, dpr);
+    setRenderDpr(dpr); // marks render at the same resolution
     this.width = width;
     this.height = height;
     this.seed = config.seed ?? 7;
@@ -135,7 +147,14 @@ export class Chart {
   }
 
   paintBackground() {
-    paintPaper(this.ctx, this.width, this.height, { color: this.paper });
+    // Paper is written with putImageData, which ignores the ctx transform, so
+    // render it at the device pixel size (and scale the tooth back to keep its
+    // logical frequency).
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    paintPaper(ctx, this.canvas.width, this.canvas.height, { color: this.paper, scale: 0.16 / this.dpr });
+    ctx.restore();
   }
 
   // Resolve the fill colour for the i-th mark. A single `color` paints every
