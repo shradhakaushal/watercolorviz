@@ -9,7 +9,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkLine, tick } from '../axes.js';
-import { paintDot, paintFillWash } from './shapes.js';
+import { paintDot, paintFillWash, paintDotSelection, bloomReveal } from './shapes.js';
 
 export class Forest extends Chart {
   constructor(el, config = {}) {
@@ -44,10 +44,20 @@ export class Forest extends Chart {
       const cy = plot.y0 + (i + 0.5) * rowH;
       const rr = wScale(s.weight || 1);
       const color = this.colorFor(i);
-      inkLine(ctx, X(s.lo), cy, X(s.hi), cy, { color: ink, opacity: 0.7, width: 1.4, jitter: 0.5, seed: seed + i });
-      paintDot(ctx, X(s.est), cy, rr, { color, seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+      const ex = X(s.est);
+      const reveal = this.loadProgress(i);
+      // Whisker grows out from the point estimate toward both CI bounds.
+      inkLine(ctx, ex + (X(s.lo) - ex) * reveal, cy, ex + (X(s.hi) - ex) * reveal, cy, { color: ink, opacity: 0.7, width: 1.4, jitter: 0.5, seed: seed + i });
+      // Point estimate blooms in place.
+      bloomReveal(ctx, ex, cy, rr, reveal, () => {
+        paintDot(ctx, ex, cy, rr, { color, seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+      });
       this.text(s.name, plot.x0 - 10, cy, { size: 11, align: 'right' });
-      marks.push({ index: i, x: X(s.lo), y: cy - rr - 3, w: X(s.hi) - X(s.lo), h: 2 * rr + 6, color, label: `${s.name}: ${s.est} [${s.lo}, ${s.hi}]` });
+      marks.push({ index: i, x: X(s.lo), y: cy - rr - 3, w: X(s.hi) - X(s.lo), h: 2 * rr + 6, cx: ex, cy, r: rr, color, label: `${s.name}: ${s.est} [${s.lo}, ${s.hi}]` });
+    });
+    // Hover: glow + deepen the hovered study's estimate dot.
+    marks.forEach((mark) => {
+      paintDotSelection(ctx, mark.cx, mark.cy, mark.r, { color: mark.color, progress: this.selectionProgress(mark.index) });
     });
     this.setInteractiveMarks(marks);
 
@@ -66,5 +76,6 @@ export class Forest extends Chart {
     }
 
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(studies.length);
   }
 }

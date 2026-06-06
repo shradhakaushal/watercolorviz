@@ -82,10 +82,10 @@ test('destroy() removes listeners and cancels animation frames', () => {
 
 test('paper buffer is built once and reused across draws', () => {
   const chart = new wcv.Bar(C(), { data: { labels: ['A', 'B'], values: [1, 2] }, animation: false });
-  const buf = chart._paperBuffer;
+  const buf = chart._paperCache && chart._paperCache.oc;
   assert.ok(buf, 'paper buffer created on first draw');
   chart.draw();
-  assert.equal(chart._paperBuffer, buf, 'same buffer reused on re-draw');
+  assert.equal(chart._paperCache.oc, buf, 'same buffer reused on re-draw');
 });
 
 test('keyboard navigation moves the highlight across marks', () => {

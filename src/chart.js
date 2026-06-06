@@ -220,28 +220,27 @@ export class Chart {
   }
 
   paintBackground() {
-    // The paper is a per-pixel noise field — far too expensive to recompute on
-    // every frame (hover/load animations call render() ~60×/s). Paint it ONCE to
-    // an offscreen buffer keyed by device size + colour, then just blit it. The
-    // buffer is rebuilt only when those change (e.g. on resize).
+    // Paper is a per-pixel noise field — by far the most expensive thing in a
+    // frame. It only depends on the backing size, dpr and paper colour, none of
+    // which change across the many redraws of an animation, so paint it ONCE to
+    // an offscreen and just blit it each frame. (The cache invalidates itself
+    // when the backing size changes, e.g. on resize.) Paper is written with
+    // putImageData, which ignores the ctx transform, so it lives at device
+    // pixel size (with the tooth scaled back to keep its logical frequency).
     const ctx = this.ctx;
-    const dw = this.canvas.width;
-    const dh = this.canvas.height;
-    const key = `${dw}x${dh}:${this.paper || ''}`;
-    if (!this._paperBuffer || this._paperKey !== key) {
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+    let cache = this._paperCache;
+    if (!cache || cache.w !== cw || cache.h !== ch || cache.color !== this.paper) {
       const oc = document.createElement('canvas');
-      oc.width = dw;
-      oc.height = dh;
-      // Paper is written with putImageData (which ignores transforms), so it is
-      // rendered at device pixel size; scale the tooth back to keep its logical
-      // frequency.
-      paintPaper(oc.getContext('2d'), dw, dh, { color: this.paper, scale: 0.16 / this.dpr });
-      this._paperBuffer = oc;
-      this._paperKey = key;
+      oc.width = cw;
+      oc.height = ch;
+      paintPaper(oc.getContext('2d'), cw, ch, { color: this.paper, scale: 0.16 / this.dpr });
+      cache = this._paperCache = { oc, w: cw, h: ch, color: this.paper };
     }
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(this._paperBuffer, 0, 0);
+    ctx.drawImage(cache.oc, 0, 0);
     ctx.restore();
   }
 
@@ -671,8 +670,8 @@ export class Chart {
     };
     // Old-size marks become stale but are keyed by geometry, so they simply
     // stop being hit and age out of the LRU — no global wipe (which would also
-    // evict every OTHER chart's cached marks on the page).
-    this._paperBuffer = null; // size changed → rebuild the paper buffer
+    // evict every OTHER chart's cached marks on the page). The paper cache
+    // self-invalidates on the size change in paintBackground().
     this._animationStart = this.now();
     if (this.config.data) this.draw();
   }
