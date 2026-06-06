@@ -6,7 +6,7 @@
 import { Chart } from '../chart.js';
 import { diverging } from '../palette.js';
 import { inkLine } from '../axes.js';
-import { paintRectWash } from './shapes.js';
+import { paintRectWash, paintRectSelection, bloomReveal } from './shapes.js';
 
 export class Likert extends Chart {
   constructor(el, config = {}) {
@@ -47,19 +47,40 @@ export class Likert extends Chart {
     // Centre reference line behind the bars.
     inkLine(ctx, cx, plot.y0 - 4, cx, plot.y1 + 4, { color: ink, opacity: 0.35, width: 1.2, jitter: 0.4, seed });
 
+    const marks = [];
     questions.forEach((q, qi) => {
       const r = rows[qi];
       const [left] = sideOf(r);
       const y0 = plot.y0 + qi * rowH + (rowH - barH) / 2;
+      const reveal = this.loadProgress(qi);
       let xpos = cx - left * sc;
       r.forEach((f, li) => {
         const w = f * sc;
         // Overlap each segment 1px into its neighbour so the edges bleed.
-        if (w > 0.6) paintRectWash(ctx, xpos - 1, y0, w + 2, barH, { color: colors[li], seed: seed + qi * 7 + li, intensity: 0.95, ink });
+        if (w > 0.6) {
+          const rw = w + 2;
+          const segSeed = seed + qi * 7 + li;
+          const maxR = Math.hypot(rw, barH) / 2;
+          bloomReveal(ctx, xpos - 1 + rw / 2, y0 + barH / 2, maxR, reveal, () => {
+            paintRectWash(ctx, xpos - 1, y0, rw, barH, { color: colors[li], seed: segSeed, intensity: 0.95, ink });
+          });
+          marks.push({
+            index: marks.length,
+            x: xpos - 1, y: y0, w: rw, h: barH,
+            color: colors[li], seed: segSeed,
+            label: `${q}\n${levels[li]}: ${values[qi][li]} (${Math.round(f * 100)}%)`,
+          });
+        }
         xpos += w;
       });
       this.text(q, plot.x0 - 10, y0 + barH / 2, { size: 12, align: 'right' });
     });
+
+    // Hover: deepen the hovered segment with a sketched edge + tooltip.
+    marks.forEach((mark) => {
+      paintRectSelection(ctx, mark.x, mark.y, mark.w, mark.h, { color: mark.color, seed: mark.seed, progress: this.selectionProgress(mark.index) });
+    });
+    this.setInteractiveMarks(marks);
 
     // Legend along the bottom, under the bars.
     if (config.legend !== false) {
@@ -67,5 +88,6 @@ export class Likert extends Chart {
     }
 
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(questions.length);
   }
 }

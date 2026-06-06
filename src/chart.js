@@ -209,13 +209,27 @@ export class Chart {
   }
 
   paintBackground() {
-    // Paper is written with putImageData, which ignores the ctx transform, so
-    // render it at the device pixel size (and scale the tooth back to keep its
-    // logical frequency).
+    // Paper is a per-pixel noise field — by far the most expensive thing in a
+    // frame. It only depends on the backing size, dpr and paper colour, none of
+    // which change across the many redraws of an animation, so paint it ONCE to
+    // an offscreen and just blit it each frame. (The cache invalidates itself
+    // when the backing size changes, e.g. on resize.) Paper is written with
+    // putImageData, which ignores the ctx transform, so it lives at device
+    // pixel size (with the tooth scaled back to keep its logical frequency).
     const ctx = this.ctx;
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+    let cache = this._paperCache;
+    if (!cache || cache.w !== cw || cache.h !== ch || cache.color !== this.paper) {
+      const oc = document.createElement('canvas');
+      oc.width = cw;
+      oc.height = ch;
+      paintPaper(oc.getContext('2d'), cw, ch, { color: this.paper, scale: 0.16 / this.dpr });
+      cache = this._paperCache = { oc, w: cw, h: ch, color: this.paper };
+    }
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    paintPaper(ctx, this.canvas.width, this.canvas.height, { color: this.paper, scale: 0.16 / this.dpr });
+    ctx.drawImage(cache.oc, 0, 0);
     ctx.restore();
   }
 
