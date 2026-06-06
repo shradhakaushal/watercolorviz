@@ -144,7 +144,7 @@
         <div>
           <h1>Global demography in watercolor</h1>
           <p class="dek">
-            A compact review sheet for the polygon wash engine: ten chart forms built from local
+            A compact review sheet for the polygon wash engine: twelve chart forms built from local
             demographic datasets and painted onto the same cold-press paper texture.
           </p>
         </div>
@@ -235,6 +235,22 @@
           </figcaption>
           <canvas id="scatter" width="560" height="360"></canvas>
         </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Line</strong>
+            <span>world population since 1950</span>
+          </figcaption>
+          <canvas id="line" width="560" height="360"></canvas>
+        </figure>
+
+        <figure>
+          <figcaption>
+            <strong>Network</strong>
+            <span>regional population graph, 2023</span>
+          </figcaption>
+          <canvas id="network" width="560" height="360"></canvas>
+        </figure>
       </section>
 
       <footer>
@@ -248,6 +264,7 @@
       import { paintPaper } from '../src/paper.js';
       import { colorAt, VIVID } from '../src/palette.js';
       import { paintPolygon, regularPolygon } from '../src/watercolor.js';
+      import { inkPath } from '../src/axes.js';
 
       const regionOrder = ['Africa', 'Asia', 'Europe', 'Americas', 'Oceania'];
       const ageOrder = ['Under-5s', 'Ages 5-14', 'Ages 15-24', 'Ages 25-64', 'Ages 65+'];
@@ -284,6 +301,8 @@
       drawDonut(document.getElementById('donut'), regionPopulation);
       drawRadar(document.getElementById('radar'), ageStructure);
       drawScatter(document.getElementById('scatter'), countryDevelopment);
+      drawLine(document.getElementById('line'), worldPopulation);
+      drawNetwork(document.getElementById('network'), regionPopulation);
 
       function chart(canvas) {
         const ctx = canvas.getContext('2d');
@@ -678,6 +697,64 @@
         }
         label(ctx, 'income per person, PPP', m.left + innerW / 2, canvas.height - 13, { size: 10 });
         label(ctx, 'life expectancy', 18, 24, { align: 'left', size: 10 });
+      }
+
+      function drawLine(canvas, rows) {
+        const ctx = chart(canvas);
+        const m = { top: 26, right: 26, bottom: 44, left: 58 };
+        const innerW = canvas.width - m.left - m.right;
+        const innerH = canvas.height - m.top - m.bottom;
+        const x = d3.scaleLinear().domain(d3.extent(rows, (d) => d.year)).range([m.left, m.left + innerW]);
+        const y = d3.scaleLinear().domain([0, d3.max(rows, (d) => d.population_billions)]).nice().range([m.top + innerH, m.top]);
+
+        yAxis(ctx, y, m.left, innerW, 5, (d) => `${d}B`);
+        line(ctx, [[m.left, y(0)], [m.left + innerW, y(0)]], 'rgba(67,58,47,0.45)');
+
+        // Hand-drawn ink line through the series.
+        const pts = rows.map((d) => [x(d.year), y(d.population_billions)]);
+        inkPath(ctx, pts, { color: '#2e6fb7', width: 2.4, opacity: 0.92, seed: 1320, gaps: false });
+
+        // Markers each ~two decades.
+        rows.forEach((d, index) => {
+          if (d.year % 20 !== 0 && d.year !== rows.at(-1).year) return;
+          paintPolygon(ctx, regularPolygon(x(d.year), y(d.population_billions), 6, 12), wc({
+            color: VIVID[0], seed: 1300 + index, layers: 6, layerOpacity: 0.05,
+            blooms: 1, edgeDarkening: 0.5, granulation: 0.1, outline: true, outlineOpacity: 0.4,
+          }));
+        });
+        xAxisYears(ctx, x, y(0), [1950, 1970, 1990, 2010, 2023]);
+        label(ctx, 'world population', m.left + innerW / 2, canvas.height - 13, { size: 10 });
+      }
+
+      function drawNetwork(canvas, rows) {
+        const ctx = chart(canvas);
+        const latest = rows.filter((d) => d.year === 2023);
+        const popByRegion = new Map(latest.map((d) => [d.region, d.population_millions]));
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2 + 6;
+
+        // Largest region (Asia) as the hub; the rest on a ring around it.
+        const ring = regionOrder.filter((r) => r !== 'Asia');
+        const pos = new Map([['Asia', [cx, cy]]]);
+        ring.forEach((r, i) => {
+          const a = -Math.PI / 2 + (i / ring.length) * Math.PI * 2;
+          pos.set(r, [cx + Math.cos(a) * 160, cy + Math.sin(a) * 96]);
+        });
+        const rScale = d3.scaleSqrt().domain([0, d3.max(latest, (d) => d.population_millions)]).range([11, 32]);
+        const edges = ring.map((r) => ['Asia', r]).concat([['Europe', 'Africa'], ['Americas', 'Europe']]);
+
+        edges.forEach((e, k) => {
+          inkPath(ctx, [pos.get(e[0]), pos.get(e[1])], { width: 1.5, opacity: 0.4, seed: 1400 + k, gaps: false });
+        });
+        regionOrder.forEach((region, i) => {
+          const p = pos.get(region);
+          const rad = rScale(popByRegion.get(region));
+          paintPolygon(ctx, regularPolygon(p[0], p[1], rad, 24), wc({
+            color: regionColor.get(region), seed: 1450 + i, layers: 9, layerOpacity: 0.04,
+            intensity: 1.05, outline: true, outlineOpacity: 0.4,
+          }));
+          label(ctx, region, p[0], p[1] + rad + 11, { size: 10, color: ink });
+        });
       }
 
       function drawLegend(ctx, labels, x, y) {

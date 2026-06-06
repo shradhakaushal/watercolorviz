@@ -21,7 +21,21 @@ echo "   Blob demo : http://localhost:${PORT}/examples/blob.html"
 echo "   Bar chart : http://localhost:${PORT}/examples/bars.html"
 echo "   Charts    : http://localhost:${PORT}/examples/charts.html"
 echo "   Areas     : http://localhost:${PORT}/examples/areas.html"
+echo "   More      : http://localhost:${PORT}/examples/more-charts.html"
+echo "   Uncertain : http://localhost:${PORT}/examples/uncertainty.html"
 echo "   Repo root : http://localhost:${PORT}/"
 echo
 
-exec python3 -m http.server "$PORT"
+# Serve with no-store so the browser never holds a stale ES module across edits
+# or branch switches (the source files live at fixed URLs like /src/index.js).
+exec python3 -c '
+import sys, http.server, socketserver
+PORT = int(sys.argv[1])
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, max-age=0")
+        super().end_headers()
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    httpd.serve_forever()
+' "$PORT"
