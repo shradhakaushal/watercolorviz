@@ -6,7 +6,7 @@
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { tick } from '../axes.js';
-import { paintDot } from './shapes.js';
+import { paintDot, paintDotSelection } from './shapes.js';
 
 export class Scatter extends Chart {
   render() {
@@ -34,17 +34,34 @@ export class Scatter extends Chart {
       this.text(String(t), tx, plot.y1 + 16, { size: 12 });
     }
 
+    const marks = [];
     xs.forEach((xv, i) => {
       const cx = plot.x0 + x(xv);
       const cy = plot.y0 + y(ys[i]);
       const r = rs ? rScale(rs[i]) : config.radius || 8;
-      paintDot(ctx, cx, cy, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
+      const reveal = this.loadProgress(i);
+      if (reveal > 0) {
+        const scale = 0.72 + reveal * 0.28;
+        ctx.save();
+        ctx.globalAlpha = 0.25 + reveal * 0.75;
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+        paintDot(ctx, 0, 0, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
+        ctx.restore();
+      }
+      paintDotSelection(ctx, cx, cy, r, {
+        color: this.colorFor(i),
+        progress: this.selectionProgress(i),
+      });
+      marks.push({ index: i, cx, cy, r });
     });
+    this.setInteractiveMarks(marks);
 
     // Optional category key: pass `legend: [{ label, color }]`.
     if (Array.isArray(config.legend)) this.drawLegend(config.legend);
 
     this.drawAxisLines();
     this.drawTitleAndLabels();
+    this.scheduleLoadAnimation(xs.length);
   }
 }
