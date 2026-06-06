@@ -35,9 +35,14 @@ export class Line extends Chart {
     inkPath(ctx, pts, { seed, width: 2.1, gaps: false, color: lineColor });
 
     // Markers.
+    const marks = [];
     pts.forEach((p, i) => {
-      paintDot(ctx, p[0], p[1], config.radius || 6, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+      const r = config.radius || 6;
+      const color = this.colorFor(i);
+      paintDot(ctx, p[0], p[1], r, { color, seed: seed + i * 7, intensity: 0.95, outline: true, ink });
+      marks.push({ index: i, x: p[0] - r, y: p[1] - r, w: 2 * r, h: 2 * r, hitPad: 6, color, label: `${xs[i]}: ${ys[i]}` });
     });
+    this.setInteractiveMarks(marks);
 
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);

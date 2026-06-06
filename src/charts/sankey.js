@@ -118,9 +118,12 @@ export class Sankey extends Chart {
 
     // Nodes + labels. Labels sit OUTSIDE the flow: left column to the left,
     // right column to the right, interior columns above their node.
+    const marks = [];
     names.forEach((name, i) => {
       const r = rect[i];
-      paintRectWash(ctx, r.x, r.y, r.w, r.h, { color: this.colorFor(i), seed: seed + 100 + i, ink });
+      const color = this.colorFor(i);
+      paintRectWash(ctx, r.x, r.y, r.w, r.h, { color, seed: seed + 100 + i, ink });
+      marks.push({ index: i, x: r.x, y: r.y, w: r.w, h: r.h, hitPad: 6, color, label: `${name}: ${Math.round(nodeValue[i])}` });
       const cy = r.y + r.h / 2;
       if (layer[i] === 0) {
         this.text(name, r.x - 7, cy, { size: 12, align: 'right' });
@@ -130,6 +133,7 @@ export class Sankey extends Chart {
         this.text(name, r.x + r.w / 2, r.y - 9, { size: 12, align: 'center' });
       }
     });
+    this.setInteractiveMarks(marks);
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
   }

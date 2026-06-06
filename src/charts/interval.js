@@ -60,6 +60,19 @@ export class Interval extends Chart {
     const meanPts = xs.map((_, i) => [px(i), plot.y0 + y(ys[i])]);
     inkPath(ctx, meanPts, { seed, width: 2, gaps: false, color: config.lineColor || ink });
 
+    // Per-x hover targets (a slim vertical strip) → value + CI bounds tooltip.
+    const stepW = xs.length > 1 ? (px(1) - px(0)) : 16;
+    const marks = xs.map((xv, i) => ({
+      index: i,
+      x: px(i) - stepW / 2,
+      y: plot.y0 + y(hi[i]),
+      w: Math.max(6, stepW),
+      h: plot.y0 + y(lo[i]) - (plot.y0 + y(hi[i])),
+      color,
+      label: `${xv}: ${+ys[i].toFixed(1)} [${+lo[i].toFixed(1)}, ${+hi[i].toFixed(1)}]`,
+    }));
+    this.setInteractiveMarks(marks);
+
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
       tick(ctx, plot.x0, ty, false, { color: ink });

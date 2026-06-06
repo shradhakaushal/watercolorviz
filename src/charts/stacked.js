@@ -136,19 +136,18 @@ export class StackedArea extends Chart {
       });
     }
 
-    if (!stream) {
-      for (const t of y.ticks(5)) {
-        const ty = plot.y0 + y(t);
-        tick(ctx, plot.x0, ty, false, { color: ink });
-        this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
-      }
+    // Axes exist for the streamgraph too (the y-scale is the wiggle offset).
+    for (const t of y.ticks(5)) {
+      const ty = plot.y0 + y(t);
+      tick(ctx, plot.x0, ty, false, { color: ink });
+      this.text(String(t), plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
     for (const t of x.ticks(6)) {
       const tx = plot.x0 + x(t);
       tick(ctx, tx, plot.y1, true, { color: ink });
       this.text(String(t), tx, plot.y1 + 16, { size: 12 });
     }
-    if (!stream) this.drawAxisLines();
+    this.drawAxisLines();
     this.drawTitleAndLabels();
     this.scheduleLoadAnimation(marks.length);
   }

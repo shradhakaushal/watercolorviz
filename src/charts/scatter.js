@@ -34,12 +34,16 @@ export class Scatter extends Chart {
       this.text(String(t), tx, plot.y1 + 16, { size: 12 });
     }
 
+    const marks = [];
     xs.forEach((xv, i) => {
       const cx = plot.x0 + x(xv);
       const cy = plot.y0 + y(ys[i]);
       const r = rs ? rScale(rs[i]) : config.radius || 8;
-      paintDot(ctx, cx, cy, r, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
+      const color = this.colorFor(i);
+      paintDot(ctx, cx, cy, r, { color, seed: seed + i * 7, intensity: 0.82, outline: r > 12, ink });
+      marks.push({ index: i, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, color, label: rs ? `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)} · ${Math.round(rs[i])}` : `${+xv.toFixed(1)}, ${+ys[i].toFixed(1)}` });
     });
+    this.setInteractiveMarks(marks);
 
     // Optional category key: pass `legend: [{ label, color }]`.
     if (Array.isArray(config.legend)) this.drawLegend(config.legend);

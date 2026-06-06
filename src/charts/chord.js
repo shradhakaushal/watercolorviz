@@ -6,7 +6,7 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { paintWedge, paintFillWash } from './shapes.js';
+import { paintWedge, paintFillWash, wedgePolygon } from './shapes.js';
 
 // Points along a ring arc (angles measured from 12 o'clock, like the wedges).
 function arcPts(cx, cy, r, a0, a1, segs = 20) {
@@ -45,15 +45,15 @@ export class Chord extends Chart {
     const r0 = R - 13; // inner radius where ribbons attach
 
     // Group arcs around the ring.
+    const marks = [];
     chords.groups.forEach((g, i) => {
-      paintWedge(ctx, cx, cy, r0, R, g.startAngle - Math.PI / 2, g.endAngle - Math.PI / 2, {
-        color: this.colorFor(i),
-        seed: seed + i,
-        ink,
-      });
+      const color = this.colorFor(i);
+      paintWedge(ctx, cx, cy, r0, R, g.startAngle - Math.PI / 2, g.endAngle - Math.PI / 2, { color, seed: seed + i, ink });
       const mid = (g.startAngle + g.endAngle) / 2 - Math.PI / 2;
       this.text(names[i], cx + Math.cos(mid) * (R + 15), cy + Math.sin(mid) * (R + 15), { size: 11 });
+      marks.push({ index: i, points: wedgePolygon(cx, cy, r0, R, g.startAngle - Math.PI / 2, g.endAngle - Math.PI / 2), color, label: `${names[i]}: ${Math.round(g.value)}` });
     });
+    this.setInteractiveMarks(marks);
 
     // Ribbons: source arc → curve through centre → target arc → curve back.
     chords.forEach((ch, ci) => {

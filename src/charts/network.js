@@ -27,11 +27,17 @@ export class Network extends Chart {
     });
 
     // Nodes.
+    const marks = [];
     nodes.forEach((n, i) => {
       const color = n.color || this.colorFor(i);
-      paintDot(ctx, px(n), py(n), n.r || config.radius || 15, { color, seed: seed + i * 11, intensity: 0.95, outline: true, ink });
-      if (n.label) this.text(n.label, px(n), py(n) + (n.r || 15) + 11, { size: 12 });
+      const r = n.r || config.radius || 15;
+      const nx = px(n);
+      const ny = py(n);
+      paintDot(ctx, nx, ny, r, { color, seed: seed + i * 11, intensity: 0.95, outline: true, ink });
+      if (n.label) this.text(n.label, nx, ny + r + 11, { size: 12 });
+      marks.push({ index: i, x: nx - r, y: ny - r, w: 2 * r, h: 2 * r, color, label: n.label != null ? `${n.label}` : `node ${i}` });
     });
+    this.setInteractiveMarks(marks);
 
     if (config.title) this.text(config.title, this.width / 2, this.margin.top / 2, { size: 22 });
   }

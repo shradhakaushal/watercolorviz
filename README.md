@@ -80,8 +80,9 @@ Omit them all and a default muted palette cycles.
 ## Interactive, responsive, accessible
 - **Hi-DPI** — canvases render at `devicePixelRatio`, so text/ink/marks are crisp on retina.
 - **Animations** — marks reveal in on load (disable with `animation: false`).
-- **Tooltips** — hover a mark to see its value; the bar/histogram/heatmap/stacked/ridgeline charts
-  are interactive out of the box (`tooltip: false` to disable).
+- **Tooltips** — hover any mark to see its value + colour key; interactive out of the box on
+  every chart (`tooltip: false` to disable). Chrome (axes/ticks/annotations) is drawn as crisp
+  technical pen, distinct from the watercolor fills.
 - **Responsive** — pass `width: '100%'` (or `responsive: true`, plus optional `aspect`) and the
   chart fits its container and re-fits on resize.
 - **Accessible** — each canvas gets `role="img"` and an `aria-label` summary (override with
