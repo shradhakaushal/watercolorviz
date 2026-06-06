@@ -86,10 +86,23 @@ export class Line extends Chart {
     const seriesColor = (s) => this.colorFor(s);
     const markerColor = (s, i) => (multi ? this.colorFor(s) : this.colorFor(i));
 
-    const numericX = typeof xs[0] === 'number';
-    const x = numericX
-      ? d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w])
-      : d3.scalePoint().domain(xs).range([0, plot.w]);
+    // x can be a time axis (Date values or xScale:'time'), a numeric linear
+    // axis, or categorical (scalePoint over the raw labels).
+    const timeX = config.xScale === 'time' || xs[0] instanceof Date;
+    const xvals = timeX ? xs.map((d) => (d instanceof Date ? d : new Date(d))) : xs;
+    const numericX = !timeX && typeof xs[0] === 'number';
+    let x;
+    let xi = null;
+    if (timeX) {
+      xi = buildScale({ type: 'time', values: xvals, range: [0, plot.w], tickCount: config.xTicks || 6, nice: config.xNice !== false });
+      x = xi.scale;
+    } else if (numericX) {
+      x = d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w]);
+    } else {
+      x = d3.scalePoint().domain(xs).range([0, plot.w]);
+    }
+    const tipFmt = timeX ? d3.timeFormat(config.timeFormat || '%b %e, %Y') : null;
+    const xLabel = (i) => (timeX ? tipFmt(xvals[i]) : xs[i]);
     const allY = series.flatMap((sr) => sr.values);
     // `yScale: 'log'` opts into a log value axis (positive data only); linear
     // (with a zero baseline) is the default.
@@ -105,7 +118,7 @@ export class Line extends Chart {
     }
 
     // Pixel-space points per series.
-    const ptsBy = series.map((sr) => xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(sr.values[i])]));
+    const ptsBy = series.map((sr) => xvals.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(sr.values[i])]));
 
     // Lines (reveal indices 0..S-1), drawn under the markers.
     series.forEach((sr, s) => {
@@ -153,7 +166,7 @@ export class Line extends Chart {
         if (showMarkers) {
           paintDotSelection(ctx, p[0], p[1], r, { color: markerColor(s, i), progress: this.selectionProgress(markIndex) });
         }
-        const label = multi ? `${sr.name} — ${xs[i]}: ${sr.values[i]}` : `${xs[i]}: ${sr.values[i]}`;
+        const label = multi ? `${sr.name} — ${xLabel(i)}: ${sr.values[i]}` : `${xLabel(i)}: ${sr.values[i]}`;
         marks.push({ index: markIndex, cx: p[0], cy: p[1], r, hitPad: 6, color: markerColor(s, i), label });
       });
     });
@@ -164,7 +177,14 @@ export class Line extends Chart {
       const lab = yi.format(t);
       if (lab) this.text(lab, plot.x0 - 11, ty, { size: 13, align: 'right' });
     }
-    if (numericX) {
+    if (timeX) {
+      for (const t of xi.ticks) {
+        const tx = plot.x0 + x(t);
+        tick(ctx, tx, plot.y1, true, { color: ink });
+        const lab = xi.format(t);
+        if (lab) this.text(lab, tx, plot.y1 + 16, { size: 12 });
+      }
+    } else if (numericX) {
       for (const t of x.ticks(6)) {
         const tx = plot.x0 + x(t);
         tick(ctx, tx, plot.y1, true, { color: ink });

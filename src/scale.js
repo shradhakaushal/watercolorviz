@@ -21,6 +21,18 @@ export function buildScale({
   nice = true,
   tickCount = 5,
 } = {}) {
+  if (type === 'time') {
+    // Accept Date objects, epoch millis or parseable date strings.
+    const dates = values.map((v) => (v instanceof Date ? v : new Date(v)));
+    const scale = d3.scaleTime().domain(d3.extent(dates)).range(range);
+    if (nice) scale.nice();
+    const ticks = scale.ticks(tickCount);
+    // d3's multi-scale time formatter labels each tick at the right resolution
+    // (year / month / day / hour) for the span being shown.
+    const f = scale.tickFormat();
+    return { scale, type: 'time', ticks, format: (v) => f(v) };
+  }
+
   if (type === 'log') {
     const positive = values.filter((v) => v > 0);
     let lo = d3.min(positive);
