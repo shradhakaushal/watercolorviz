@@ -56,7 +56,7 @@ export class Histogram extends Chart {
         progress: this.loadProgress(i),
         reveal: 'up',
       });
-      marks.push({ index: i, x: bx, y: top, w: bw, h: bh, color, seed: seed + i * 13 });
+      marks.push({ index: i, x: bx, y: top, w: bw, h: bh, color, seed: seed + i * 13, label: `[${Math.round(b.x0)}, ${Math.round(b.x1)}): ${b.length}` });
     });
 
     marks.forEach((mark) => {

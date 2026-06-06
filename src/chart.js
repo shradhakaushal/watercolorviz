@@ -7,7 +7,7 @@
 // `render()`.
 
 import { paintPaper } from './paper.js';
-import { setRenderDpr } from './watercolor.js';
+import { setRenderDpr, clearMarkCache } from './watercolor.js';
 import { inkLine, arrowhead, INK } from './axes.js';
 import { colorAt } from './palette.js';
 import { annotateArrow, annotateCircle, annotateText, annotateCallout, annotateBand, annotateBracket } from './annotate.js';
@@ -35,11 +35,19 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 export class Chart {
   constructor(el, config = {}) {
     this.config = config;
-    const width = config.width || 460;
-    const height = config.height || 300;
 
     // `el` may be a canvas, a DOM container, or a selector string. Resolve a
     // selector to its element FIRST, then decide: if it's already a canvas use
@@ -56,6 +64,20 @@ export class Chart {
       canvas = document.createElement('canvas');
       target.appendChild(canvas);
     }
+
+    // Responsive: `width: '100%'` or `responsive: true` fits the host element
+    // and re-fits on resize (see _setupResize). Otherwise fixed dimensions.
+    this._host = typeof target.getContext === 'function' ? target.parentNode : target;
+    this._responsive = config.width === '100%' || config.responsive === true;
+    let width = config.width === '100%' ? null : config.width;
+    let height = config.height;
+    if (this._responsive) {
+      const hostW = this._host && this._host.clientWidth;
+      width = Math.max(160, hostW || 460);
+      height = config.height || Math.round(width * (config.aspect || 0.6));
+    }
+    width = width || 460;
+    height = height || 300;
     // Hi-DPI: back the canvas at device resolution, present at CSS (logical)
     // size, and scale the context so all drawing stays in logical coords —
     // text, ink and marks all land crisp on retina screens.
@@ -83,6 +105,7 @@ export class Chart {
     this._loadRaf = null;
     this._animationStart = this.now();
     this._interactionInstalled = false;
+    this._pointer = null; // last hover position, in LOGICAL coords (for tooltips)
     // Every colour is configurable. `ink` colours all outlines/axes/labels;
     // `paper` colours the sheet; fills come from colorFor() below.
     this.ink = config.ink || INK;
@@ -105,10 +128,18 @@ export class Chart {
       h: height - m.top - m.bottom,
     };
 
-    if (config.data) {
-      this.render();
-      this.drawAnnotations();
-    }
+    this._setupAccessibility();
+    if (config.data) this.draw();
+    this._setupResize();
+  }
+
+  // One full repaint: the chart, then annotations, then the tooltip overlay.
+  // EVERY redraw path (initial, load animation, hover, resize) goes through
+  // here so annotations and tooltips survive re-renders.
+  draw() {
+    this.render();
+    this.drawAnnotations();
+    this.drawTooltip();
   }
 
   // Resolve an annotation point. A point is either:
@@ -272,8 +303,11 @@ export class Chart {
     const hitTest = (event) => {
       const box = this.canvas.getBoundingClientRect();
       if (!box.width || !box.height) return null;
-      const x = (event.clientX - box.left) * (this.canvas.width / box.width);
-      const y = (event.clientY - box.top) * (this.canvas.height / box.height);
+      // Marks are in LOGICAL coords; map the pointer to logical px (CSS box maps
+      // to this.width/height regardless of devicePixelRatio).
+      const x = (event.clientX - box.left) * (this.width / box.width);
+      const y = (event.clientY - box.top) * (this.height / box.height);
+      this._pointer = { x, y };
       for (let i = this._interactiveMarks.length - 1; i >= 0; i--) {
         const mark = this._interactiveMarks[i];
         if (mark.points && pointInPolygon(x, y, mark.points)) {
@@ -330,7 +364,7 @@ export class Chart {
 
     this._loadRaf = requestAnimationFrame(() => {
       this._loadRaf = null;
-      this.render();
+      this.draw();
     });
   }
 
@@ -360,7 +394,7 @@ export class Chart {
         if (next !== target) active = true;
       }
 
-      this.render();
+      this.draw();
       if (active) {
         this._hoverRaf = raf(tick);
       } else {
@@ -403,6 +437,109 @@ export class Chart {
       this.text(it.label, x + swatch + 5, y, { size, align: 'left' });
       x += w(it);
     }
+  }
+
+  // Tooltip overlay: when a mark is hovered, show its `label` near the pointer.
+  // Disable with `tooltip: false`. Marks opt in by carrying a `label` string.
+  drawTooltip() {
+    if (this.config.tooltip === false) return;
+    if (this._hoverTarget == null || !this._pointer) return;
+    const mark = this._interactiveMarks.find((m) => m.index === this._hoverTarget);
+    if (!mark || !mark.label) return;
+
+    const ctx = this.ctx;
+    const lines = String(mark.label).split('\n');
+    const size = 13;
+    const lh = size + 4;
+    const pad = 8;
+    const sw = mark.color ? 12 : 0;
+    ctx.save();
+    ctx.font = `${size}px ${this.font}`;
+    const textW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    const bw = textW + pad * 2 + sw;
+    const bh = lines.length * lh + pad * 2 - 4;
+    let bx = this._pointer.x + 14;
+    let by = this._pointer.y + 14;
+    if (bx + bw > this.width) bx = this._pointer.x - bw - 14;
+    if (by + bh > this.height) by = this._pointer.y - bh - 14;
+    if (bx < 2) bx = 2;
+    if (by < 2) by = 2;
+
+    roundRectPath(ctx, bx, by, bw, bh, 5);
+    ctx.fillStyle = 'rgba(43, 38, 31, 0.92)';
+    ctx.fill();
+    if (sw) {
+      ctx.fillStyle = mark.color;
+      roundRectPath(ctx, bx + pad, by + pad + 1, 9, 9, 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#fbf3e7';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => ctx.fillText(l, bx + pad + sw, by + pad + lh / 2 - 2 + i * lh));
+    ctx.restore();
+  }
+
+  _setupAccessibility() {
+    const c = this.canvas;
+    if (!c || typeof c.setAttribute !== 'function') return;
+    c.setAttribute('role', 'img');
+    c.setAttribute('aria-label', this.ariaLabel());
+  }
+
+  // A plain-text summary of the chart for screen readers.
+  ariaLabel() {
+    if (this.config.ariaLabel) return this.config.ariaLabel;
+    const parts = [];
+    if (this.config.title) parts.push(this.config.title);
+    const d = this.config.data;
+    if (d && Array.isArray(d.labels) && Array.isArray(d.values)) {
+      parts.push(d.labels.map((l, i) => `${l}: ${d.values[i]}`).join(', '));
+    }
+    return parts.join('. ') || 'watercolor chart';
+  }
+
+  // Responsive: re-fit to the host element's width on resize.
+  _setupResize() {
+    if (!this._responsive || !this._host) return;
+    if (typeof ResizeObserver !== 'function') return;
+    this._ro = new ResizeObserver(() => {
+      const hostW = this._host.clientWidth;
+      if (!hostW || Math.abs(hostW - this.width) < 2) return;
+      const h = this.config.height || Math.round(hostW * (this.config.aspect || 0.6));
+      this.resize(hostW, h);
+    });
+    this._ro.observe(this._host);
+  }
+
+  // Resize the canvas and repaint at new logical dimensions.
+  resize(width, height) {
+    this.width = width;
+    this.height = height;
+    const dpr = this.dpr;
+    this.canvas.width = Math.round(width * dpr); // resets the 2D context state
+    this.canvas.height = Math.round(height * dpr);
+    if (this.canvas.style) {
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+    }
+    this.ctx.scale(dpr, dpr);
+    setRenderDpr(dpr);
+    const m = this.margin;
+    this.plot = {
+      x0: m.left, y0: m.top,
+      x1: width - m.right, y1: height - m.bottom,
+      w: width - m.left - m.right, h: height - m.top - m.bottom,
+    };
+    clearMarkCache(); // geometry changed → old cached marks are stale
+    this._animationStart = this.now();
+    if (this.config.data) this.draw();
+  }
+
+  // Detach observers/listeners (call when removing a chart).
+  destroy() {
+    if (this._ro) this._ro.disconnect();
+    this._ro = null;
   }
 
   // Subclasses override.

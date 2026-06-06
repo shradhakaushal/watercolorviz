@@ -70,6 +70,7 @@ export class StackedArea extends Chart {
           top: topPts,
           color,
           seed: seed + si * 17,
+          label: layer.key,
         });
       });
       marks.forEach((mark) => {

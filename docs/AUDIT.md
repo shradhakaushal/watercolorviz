@@ -27,17 +27,20 @@ that matter for taking this from "gorgeous demo" to "a library people depend on.
 
 ## Gaps (prioritised for long-term planning)
 
-### Tier 1 — needed before anyone can really use it
-1. **Hi-DPI / responsive rendering.** Canvas is rendered at CSS pixels, so it's
-   blurry on retina. Scale the backing store by `devicePixelRatio`; support
-   `width: '100%'` / resize. *(Biggest visible-quality + usability win.)*
-2. **Interactivity — tooltips & hover.** The #1 expectation of a charting lib;
-   currently fully static. Needs a hit-test layer over the marks.
-3. **Packaging & distribution.** No npm publish, no bundled/min build, no CDN
-   artifact, no TypeScript types or JSDoc typedefs, no semver/changelog. Today
-   you must import `src/` directly.
-4. **Accessibility.** No ARIA roles, no `alt`/`aria-label`, no data-table
-   fallback, no contrast guidance. Blocks institutional adoption.
+### Tier 1 — needed before anyone can really use it  ✅ DONE
+1. ✅ **Hi-DPI rendering** — backing store scaled by `devicePixelRatio`; marks
+   render at device res. **Responsive** — `width: '100%'` / `responsive: true`
+   fits the host + re-fits via ResizeObserver.
+2. ✅ **Interactivity** — hover hit-test, selection highlight, and **tooltips**
+   (value labels) on bar/histogram/heatmap/stacked/ridgeline. Load animations.
+3. ⬜ **Packaging & distribution.** No npm publish, bundled/min build, CDN
+   artifact, TypeScript types/JSDoc, or semver/changelog yet. *(Moved to its own
+   phase — see "distribution" below; the only remaining Tier-1-ish gap.)*
+4. ✅ **Accessibility** — canvas `role="img"` + `aria-label` data summary
+   (override via `ariaLabel`). *(Follow-up: a visually-hidden data-table fallback.)*
+
+Remaining small follow-ups: tooltips on scatter/line/pie (point/arc hit-tests);
+the data-table a11y fallback; packaging (its own phase).
 
 ### Tier 2 — make the charts truly general
 5. **Scales & axes features.** Log/sqrt scales, time/date axes, tick formatting

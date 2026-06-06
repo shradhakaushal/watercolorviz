@@ -77,6 +77,16 @@ Every chart takes a `'#selector'`/canvas/element, a `data` object, and shared op
 
 Omit them all and a default muted palette cycles.
 
+## Interactive, responsive, accessible
+- **Hi-DPI** — canvases render at `devicePixelRatio`, so text/ink/marks are crisp on retina.
+- **Animations** — marks reveal in on load (disable with `animation: false`).
+- **Tooltips** — hover a mark to see its value; the bar/histogram/heatmap/stacked/ridgeline charts
+  are interactive out of the box (`tooltip: false` to disable).
+- **Responsive** — pass `width: '100%'` (or `responsive: true`, plus optional `aspect`) and the
+  chart fits its container and re-fits on resize.
+- **Accessible** — each canvas gets `role="img"` and an `aria-label` summary (override with
+  `ariaLabel`).
+
 ## Running the demos
 
 The demos load as ES modules, so they need to be served over HTTP (not opened from `file://`).
