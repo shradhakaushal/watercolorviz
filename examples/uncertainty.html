@@ -100,8 +100,10 @@
       new Line('#annotated', {
         title: 'Annotated', width: 480, data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] }, color: '#6f93c2', seed: 2,
         annotations: [
+          { type: 'band', from: 3, to: 5, label: 'surge', color: '#e8b94f' },
           { type: 'circle', at: [5, 60], r: 22 },
-          { type: 'callout', at: [2, 64], to: [5, 60], text: 'new high' },
+          { type: 'callout', at: [1, 64], to: [5, 60], text: 'new high' },
+          { type: 'bracket', from: [0, 14], to: [1, 14], label: 'start' },
         ],
       });
 

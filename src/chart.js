@@ -9,7 +9,7 @@
 import { paintPaper } from './paper.js';
 import { inkLine, arrowhead, INK } from './axes.js';
 import { colorAt } from './palette.js';
-import { annotateArrow, annotateCircle, annotateText, annotateCallout } from './annotate.js';
+import { annotateArrow, annotateCircle, annotateText, annotateCallout, annotateBand, annotateBracket } from './annotate.js';
 
 export class Chart {
   constructor(el, config = {}) {
@@ -84,6 +84,13 @@ export class Chart {
     return pt;
   }
 
+  // Resolve a single x-value (for x-range annotations: band, bracket spans).
+  resolveX(v) {
+    if (typeof v === 'string' && v.endsWith('%')) return this.plot.x0 + (parseFloat(v) / 100) * this.plot.w;
+    if (this.project) return this.project(v, 0)[0];
+    return v;
+  }
+
   // Hand-drawn annotations, available on EVERY chart via `config.annotations`.
   // Each item: { type: 'circle'|'arrow'|'text'|'callout', ... , color?, seed? }.
   drawAnnotations() {
@@ -108,6 +115,21 @@ export class Chart {
         const [tx, ty] = this.resolvePt(a.at, a.atPx);
         const [px, py] = this.resolvePt(a.to, a.toPx);
         annotateCallout(ctx, tx, ty, px, py, a.text, { color, size: a.size ?? 16, seed, font: this.font });
+      } else if (a.type === 'band') {
+        // Highlight over an x-range; spans the full plot height unless `yRange`.
+        const x1 = this.resolveX(a.from);
+        const x2 = this.resolveX(a.to);
+        let yTop = this.plot.y0;
+        let yBot = this.plot.y1;
+        if (a.yRange && this.project) {
+          yTop = this.project(a.from, a.yRange[1])[1];
+          yBot = this.project(a.from, a.yRange[0])[1];
+        }
+        annotateBand(ctx, x1, yTop, x2, yBot, { color, opacity: a.opacity ?? 0.16, label: a.label, size: a.size ?? 14, seed, font: this.font });
+      } else if (a.type === 'bracket') {
+        const [x1, y1] = this.resolvePt(a.from, a.fromPx);
+        const [x2, y2] = this.resolvePt(a.to, a.toPx);
+        annotateBracket(ctx, x1, y1, x2, y2, { color: a.color || this.ink, width: a.width ?? 1.8, seed, label: a.label, size: a.size ?? 14, tick: a.tick ?? 7, flip: a.flip, font: this.font });
       }
     }
   }

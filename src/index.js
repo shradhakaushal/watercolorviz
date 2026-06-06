@@ -7,7 +7,7 @@ export { paintPolygon, regularPolygon, clearMarkCache } from './watercolor.js';
 export { paintPaper } from './paper.js';
 export { VIVID, colorAt, hexToRgb, shades, diverging } from './palette.js';
 export { inkLine, arrowhead, tick, INK } from './axes.js';
-export { annotateArrow, annotateCircle, annotateText, annotateCallout } from './annotate.js';
+export { annotateArrow, annotateCircle, annotateText, annotateCallout, annotateBand, annotateBracket } from './annotate.js';
 export { Chart } from './chart.js';
 export {
   rectPoints,

@@ -4,6 +4,7 @@
 // they belong.
 
 import { inkPath, arrowhead, INK } from './axes.js';
+import { hexToRgb } from './palette.js';
 import { makeRng } from './rng.js';
 
 const FONT = '"Caveat", "Comic Sans MS", "Segoe Print", cursive';
@@ -57,6 +58,43 @@ export function annotateText(ctx, x, y, text, opts = {}) {
   ctx.textBaseline = baseline;
   ctx.fillText(text, x, y);
   ctx.restore();
+}
+
+// A soft translucent highlight band between x1 and x2 (a "highlighter swipe"
+// over an x-range), feathered at both edges, with an optional label at the top.
+export function annotateBand(ctx, x1, yTop, x2, yBot, opts = {}) {
+  const { color = '#c8604f', opacity = 0.16, label, font = FONT, size = 14, seed = 1 } = opts;
+  const [r, g, b] = hexToRgb(color);
+  const lo = Math.min(x1, x2);
+  const hi = Math.max(x1, x2);
+  const span = hi - lo || 1;
+  const fe = Math.min(14, span * 0.18) / span; // edge feather fraction
+  ctx.save();
+  const grad = ctx.createLinearGradient(lo, 0, hi, 0);
+  grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+  grad.addColorStop(fe, `rgba(${r},${g},${b},${opacity})`);
+  grad.addColorStop(1 - fe, `rgba(${r},${g},${b},${opacity})`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(lo, yTop, span, yBot - yTop);
+  ctx.restore();
+  if (label) annotateText(ctx, (lo + hi) / 2, yTop + size * 0.9, label, { color, size, font, align: 'center' });
+}
+
+// A hand-drawn bracket spanning (x1,y1)→(x2,y2) with end ticks and a label,
+// for marking a range. `flip` puts the ticks/label on the other side.
+export function annotateBracket(ctx, x1, y1, x2, y2, opts = {}) {
+  const { color = INK, width = 1.8, seed = 1, label, font = FONT, size = 14, tick = 7, flip = false } = opts;
+  const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+  let nx = -(y2 - y1) / len;
+  let ny = (x2 - x1) / len;
+  if (flip) { nx = -nx; ny = -ny; }
+  inkPath(ctx, wobbly(x1, y1, x2, y2, seed), { color, width, seed, gaps: false });
+  inkPath(ctx, [[x1, y1], [x1 + nx * tick, y1 + ny * tick]], { color, width, seed: seed + 1, gaps: false });
+  inkPath(ctx, [[x2, y2], [x2 + nx * tick, y2 + ny * tick]], { color, width, seed: seed + 2, gaps: false });
+  if (label) {
+    annotateText(ctx, (x1 + x2) / 2 + nx * (tick + size * 0.7), (y1 + y2) / 2 + ny * (tick + size * 0.7), label, { color, size, font, align: 'center' });
+  }
 }
 
 // A text callout: label at (tx,ty) with an arrow pointing to (px,py).

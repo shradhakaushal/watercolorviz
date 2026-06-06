@@ -33,12 +33,16 @@ new Line('#el', {
     { type: 'circle', at: [5, 60], r: 22 },
     { type: 'callout', at: [2, 64], to: [5, 60], text: 'new high' },
     { type: 'text', at: ['50%', '10%'], text: 'note' },
+    { type: 'band', from: 3, to: 5, label: 'peak window' },   // highlight an x-range
+    { type: 'bracket', from: [0, 12], to: [2, 12], label: 'ramp-up' }, // mark a span
   ],
 });
 ```
 
-The primitives are also exported standalone (`annotateArrow`, `annotateCircle`, `annotateText`,
-`annotateCallout`) to draw on any canvas directly.
+Types: `circle`, `arrow`, `text`, `callout`, `band` (soft highlight over an x-range), `bracket`
+(hand-drawn range marker with end ticks + label). The primitives are also exported standalone
+(`annotateArrow`, `annotateCircle`, `annotateText`, `annotateCallout`, `annotateBand`,
+`annotateBracket`) to draw on any canvas directly.
 
 ## Usage
 
