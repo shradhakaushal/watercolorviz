@@ -6,13 +6,12 @@
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
-import { colorAt } from '../palette.js';
 import { inkPath, tick } from '../axes.js';
 import { paintAreaWash } from './shapes.js';
 
 export class Ridgeline extends Chart {
   render() {
-    const { ctx, plot, seed, config } = this;
+    const { ctx, plot, seed, config, ink } = this;
     const { labels, x: xs, series } = config.data;
     this.paintBackground();
 
@@ -22,7 +21,6 @@ export class Ridgeline extends Chart {
     const overlap = config.overlap ?? 1.9; // >1 → ridges overlap upward
     const amp = rowGap * overlap;
     const maxV = d3.max(series.flat());
-    const colors = config.colors || series.map((_, i) => colorAt(i));
 
     const extend = { x0: plot.x0, x1: plot.x1, ov: 18 };
     const tops = [];
@@ -33,8 +31,8 @@ export class Ridgeline extends Chart {
         const baseY = plot.y0 + (r + 1) * rowGap;
         const top = xs.map((xv, i) => [plot.x0 + x(xv), baseY - (series[r][i] / maxV) * amp]);
         tops.push({ top, baseY });
-        paintAreaWash(ctx, top, baseY, { color: colors[r], seed: seed + r * 17, intensity: 0.9, extend });
-        inkPath(ctx, top, { seed: seed + r * 17, width: 1.7, opacity: 0.7 });
+        paintAreaWash(ctx, top, baseY, { color: this.colorFor(r), seed: seed + r * 17, intensity: 0.9, extend });
+        inkPath(ctx, top, { seed: seed + r * 17, width: 1.7, opacity: 0.7, color: ink });
       }
     });
     // Row labels (left of the axis, so outside the clip).
@@ -43,7 +41,7 @@ export class Ridgeline extends Chart {
     // x ticks along the bottom baseline.
     for (const t of x.ticks(6)) {
       const tx = plot.x0 + x(t);
-      tick(ctx, tx, plot.y1, true);
+      tick(ctx, tx, plot.y1, true, { color: ink });
       this.text(String(t), tx, plot.y1 + 16, { size: 12 });
     }
 

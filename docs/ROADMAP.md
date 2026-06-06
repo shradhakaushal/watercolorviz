@@ -60,19 +60,60 @@ wobble that preserves an arbitrary outline instead of the radial blob boundary),
 
 ---
 
-## Phase 3 — Primitive D: point blobs
+## Phase 3 — Primitive D: point blobs ✅ DONE
 **Goal:** cheap reuse.
 
-- [ ] **Scatter / bubble** (size = bubble radius)
+- [x] **Scatter / bubble** (size = bubble radius, `src/charts/scatter.js`, via `paintDot`)
 
 ---
 
-## Phase 4 — Primitive C: radial arcs (the one new geometry)
+## Phase 4 — Primitive C: radial arcs (the one new geometry) ✅ DONE
 **Goal:** round out the 10.
 
-- [ ] Arc→polygon conversion in the engine.
-- [ ] **Pie / donut**
-- [ ] **Radar / spider**
+- [x] Arc→polygon conversion (`wedgePolygon` in `src/charts/shapes.js`).
+- [x] **Pie / donut** (`src/charts/pie.js`, `innerRadius` for donut)
+- [x] **Radar / spider** (`src/charts/radar.js`)
+
+---
+
+## Bonus — line & network via faked ribbon/stroke edges
+Officially deferred (need the brushstroke engine), but done now without it: the
+edges are hand-drawn ink strokes (`inkPath`/`inkLine`) and the nodes/markers are
+`paintDot` blobs — no second engine.
+
+- [x] **Line** (`src/charts/line.js`) — continuous line-and-wash stroke + markers.
+- [x] **Network** (`src/charts/network.js`) — blob nodes + ink-stroke edges.
+- [x] **Sankey** (`src/charts/sankey.js`) — flows as filled watercolor ribbons
+      (own column/stack layout, no d3-sankey dependency).
+
+Demo for the new classes: `examples/more-charts.html`. The flagship
+`examples/showcase.html` now covers all twelve forms on real demographic data.
+
+**Colours are fully configurable** (Chart base `colorFor()` + `ink`/`paper`):
+a single `color` paints every mark that colour, `colors` cycles an explicit
+palette, `ink` colours all chrome, `paper` colours the sheet — no chart hardcodes
+its colours anymore.
+
+---
+
+## Phase 6 — Honest-uncertainty & craft charts ✅ DONE
+Charts chosen for being underserved by existing libs AND genuinely improved by
+the watercolor aesthetic (see [[next-phase-chart-ideas]] in notes). All thin
+classes on the fill engine; demo `examples/uncertainty.html`.
+
+- [x] **Confidence / prediction interval** (`src/charts/interval.js`) — the
+      flagship: nested translucent bands so density fades toward the bounds, so
+      the uncertainty *looks* uncertain. Also forecast cones / posterior bands.
+- [x] **Forest plot** (`src/charts/forest.js`) — study CIs + diamond summary.
+- [x] **Likert / survey** (`src/charts/likert.js`) — diverging stacked bars whose
+      segments bleed into each other (`palette.diverging()`).
+- [x] **Calendar heatmap** (`src/charts/calendar.js`) — GitHub-style grid.
+- [x] **Chord / connectogram** (`src/charts/chord.js`) — d3.chord layout, soft
+      arcs + translucent ribbons.
+- [x] **Sparkline** (`src/charts/sparkline.js`) — tiny inline line/area.
+- [x] **Soft Sankey** — `Sankey({ soft: true })` loosens the flow boundaries.
+- [x] **Annotation layer** (`src/annotate.js`) — hand-drawn arrows / circles /
+      callouts that match the aesthetic, drawn on any chart canvas.
 
 ---
 

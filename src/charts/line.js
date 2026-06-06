@@ -1,14 +1,12 @@
-// Area chart — Primitive B (arbitrary filled polygon).
-//
-// A soft grainy wash under the data curve, with a line-and-wash ink contour on
-// top — the classic "line and wash" look. Accepts numeric or categorical x.
+// Line chart — a continuous line-and-wash ink stroke through the data with a
+// soft blob marker at each point. (The reference's line panel.)
 
 import * as d3 from 'd3';
 import { Chart } from '../chart.js';
 import { inkPath, inkLine, tick } from '../axes.js';
-import { paintAreaWash } from './shapes.js';
+import { paintDot } from './shapes.js';
 
-export class Area extends Chart {
+export class Line extends Chart {
   render() {
     const { ctx, plot, seed, config, ink } = this;
     const xs = config.data.x;
@@ -19,7 +17,7 @@ export class Area extends Chart {
     const x = numericX
       ? d3.scaleLinear().domain(d3.extent(xs)).range([0, plot.w])
       : d3.scalePoint().domain(xs).range([0, plot.w]);
-    const y = d3.scaleLinear().domain([0, d3.max(ys)]).nice().range([plot.h, 0]);
+    const y = d3.scaleLinear().domain([0, d3.max(ys) * 1.1]).nice().range([plot.h, 0]);
     this.project = (dx, dy) => [plot.x0 + x(dx), plot.y0 + y(dy)];
 
     if (config.grid !== false) {
@@ -29,13 +27,17 @@ export class Area extends Chart {
       }
     }
 
-    const top = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(ys[i])]);
-    const color = this.colorFor(0);
-    const extend = { x0: plot.x0, x1: plot.x1, ov: 18 };
-    this.withPlotClip(() => {
-      paintAreaWash(ctx, top, plot.y1, { color, seed, intensity: config.intensity ?? 0.95, extend });
+    const pts = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(ys[i])]);
+    // The line takes the chart's chosen colour (so a blue chart is a blue line);
+    // `lineColor` overrides just the stroke if you want it inked separately.
+    const lineColor = config.lineColor || this.colorFor(0);
+
+    inkPath(ctx, pts, { seed, width: 2.1, gaps: false, color: lineColor });
+
+    // Markers.
+    pts.forEach((p, i) => {
+      paintDot(ctx, p[0], p[1], config.radius || 6, { color: this.colorFor(i), seed: seed + i * 7, intensity: 0.95, outline: true, ink });
     });
-    inkPath(ctx, top, { seed, width: 1.9, color: ink });
 
     for (const t of y.ticks(5)) {
       const ty = plot.y0 + y(t);
