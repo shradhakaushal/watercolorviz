@@ -44,7 +44,23 @@ Types: `circle`, `arrow`, `text`, `callout`, `band` (soft highlight over an x-ra
 (`annotateArrow`, `annotateCircle`, `annotateText`, `annotateCallout`, `annotateBand`,
 `annotateBracket`) to draw on any canvas directly.
 
-## Usage
+## Install
+
+```sh
+npm install watercolorviz d3
+```
+
+`d3` is a **peer dependency** (you control its version). watercolorviz imports
+the `d3` meta-package; if you bundle and want to trim it, alias the unused d3
+submodules or use your bundler's tree-shaking — the parts used are scales, array,
+shape/stack, chord, format, time-format and random.
+
+```js
+import { Bar } from 'watercolorviz';
+new Bar('#chart', { data: { labels: ['A', 'B'], values: [30, 55] } });
+```
+
+No bundler? Load it as ES modules in the browser with an import map:
 
 ```html
 <script type="importmap">
@@ -61,6 +77,13 @@ Types: `circle`, `arrow`, `text`, `callout`, `band` (soft highlight over an x-ra
   });
 </script>
 ```
+
+### Fonts
+The handwriting font carries half the aesthetic. The default font stack is
+`"Caveat", "Comic Sans MS", "Segoe Print", cursive`, so it degrades gracefully,
+but for the intended look load **[Caveat](https://fonts.google.com/specimen/Caveat)**
+(SIL Open Font License) — e.g. `<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" rel="stylesheet">`,
+or self-host it. Override entirely with the `font` option (any CSS font string).
 
 Every chart takes a `'#selector'`/canvas/element, a `data` object, and shared options
 (`color`, `colors`, `ink`, `paper`, `width`, `height`, `margin`, `title`, `seed`, …). Classes:
@@ -159,6 +182,22 @@ chart.destroy();
 - **`onClick(mark, event)`** / **`onHover(mark|null)`** give you the mark's `{ index, label, color }`; map `index` back to your own data. Clicks also fire from the keyboard (Enter/Space on the focused mark).
 - **`tooltipFormat(mark)`** returns the tooltip string (multi-line ok; return `''` to suppress).
 - **`toDataURL(type?, quality?)`** / **`toBlob(cb, type?, quality?)`** export the canvas.
+
+These three methods are all you need to drive it from a framework — construct once, `update()` on data change, `destroy()` on unmount:
+
+```jsx
+// React
+function Chart({ data }) {
+  const ref = useRef(null);
+  const chart = useRef(null);
+  useEffect(() => {
+    chart.current = new Bar(ref.current, { data });
+    return () => chart.current.destroy();
+  }, []);
+  useEffect(() => { chart.current?.update({ data }); }, [data]);
+  return <canvas ref={ref} />;
+}
+```
 
 ## Interactive, responsive, accessible
 - **Hi-DPI** — canvases render at `devicePixelRatio`, so text/ink/marks are crisp on retina.

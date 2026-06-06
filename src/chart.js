@@ -683,11 +683,26 @@ export class Chart {
   // A plain-text summary of the chart for screen readers.
   ariaLabel() {
     if (this.config.ariaLabel) return this.config.ariaLabel;
+    const d = this.config.data || {};
+    const type = this.constructor.name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
     const parts = [];
     if (this.config.title) parts.push(this.config.title);
-    const d = this.config.data;
-    if (d && Array.isArray(d.labels) && Array.isArray(d.values)) {
+    if (Array.isArray(d.labels) && Array.isArray(d.values) && typeof d.values[0] === 'number') {
+      // Categorical charts read out their values.
       parts.push(d.labels.map((l, i) => `${l}: ${d.values[i]}`).join(', '));
+    } else {
+      // Every other chart gets at least a type + item-count summary so screen
+      // readers announce something useful (override with `ariaLabel`).
+      const n = (Array.isArray(d.x) && d.x.length)
+        || (Array.isArray(d.values) && d.values.length)
+        || (Array.isArray(d.studies) && d.studies.length)
+        || (Array.isArray(d.nodes) && d.nodes.length)
+        || (Array.isArray(d.days) && d.days.length)
+        || (Array.isArray(d.names) && d.names.length)
+        || (Array.isArray(d.questions) && d.questions.length)
+        || (d.series && (Array.isArray(d.series) ? d.series.length : Object.keys(d.series).length))
+        || 0;
+      parts.push(n ? `${type} chart, ${n} ${n === 1 ? 'item' : 'items'}` : `${type} chart`);
     }
     return parts.join('. ') || 'watercolor chart';
   }

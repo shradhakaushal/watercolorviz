@@ -18,6 +18,7 @@
     "src",
     "index.d.ts",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
