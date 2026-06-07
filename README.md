@@ -1,8 +1,7 @@
 # watercolorviz
 
 A library for **watercolor-style data visualizations** — soft bleeding edges, translucent layered
-washes, paper-grain granulation, and hand-drawn line-and-wash ink. Like
-[roughViz](https://github.com/jwilber/roughViz) for hand-drawn charts, but the medium is watercolor.
+washes, paper-grain granulation, and hand-drawn line-and-wash ink.
 Built for **qualitative, uncertainty-friendly** storytelling rather than precision dashboards.
 
 > Status: all v1 chart types implemented (vanilla JS, Canvas, D3 for the math).
