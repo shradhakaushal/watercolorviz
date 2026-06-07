@@ -1,0 +1,14 @@
+{
+  "name": "watercolorviz",
+  "owner": { "name": "Shradha Kaushal" },
+  "description": "Watercolor-style data visualization skills for Claude.",
+  "plugins": [
+    {
+      "name": "watercolor",
+      "source": "./plugins/watercolorviz",
+      "description": "Watercolor charts + a headless PNG renderer, as model-invoked skills. Say \"watercolor this chart\" or \"watercolify this shape\".",
+      "category": "visualization",
+      "keywords": ["dataviz", "watercolor", "charts", "visualization"]
+    }
+  ]
+}

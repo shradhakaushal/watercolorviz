@@ -50,16 +50,49 @@ skills/
         └── package.json
 ```
 
-## Publishing to a skill marketplace
+## How this is packaged (plugin + marketplace)
 
-Each subfolder is a standalone skill (a `SKILL.md` with YAML frontmatter plus its
-bundled resources). To publish:
+These two skills are bundled into **one Claude Code plugin** named `watercolor`,
+listed by the `watercolorviz` marketplace at the repo root:
 
-- **As individual skills:** zip or point the marketplace at each subfolder
-  (`watercolor-charts/`, `watercolor-render/`) on its own.
-- **As a plugin bundle:** include this `skills/` directory in a plugin and add the
-  two skills to the plugin's marketplace manifest.
+```
+watercolorviz/                          (this repo = the marketplace)
+├── .claude-plugin/marketplace.json     # catalog → lists the "watercolor" plugin
+└── plugins/watercolorviz/              (the plugin)
+    ├── .claude-plugin/plugin.json      # name: "watercolor"
+    └── skills/                         # ← these skills (auto-discovered)
+        ├── watercolor-charts/
+        └── watercolor-render/
+```
 
-Both skills are MIT-licensed (matching the library). No secrets or build step are
-required to install `watercolor-charts`; `watercolor-render` runs `npm install` in
-its `scripts/` folder on first use.
+Both skills are **model-invoked** (no `disable-model-invocation`), so "watercolor
+this chart" / "watercolify this shape" triggers them automatically.
+
+### Install (end users)
+```
+/plugin marketplace add shradhakaushal/watercolorviz
+/plugin install watercolor@watercolorviz
+```
+
+### Test locally (maintainers)
+```
+claude plugin validate .                         # validate marketplace + plugin
+claude --plugin-dir ./plugins/watercolorviz      # load the plugin directly
+# or: /plugin marketplace add ./  then  /plugin install watercolor@watercolorviz
+```
+
+### Wider discoverability
+Submit the plugin for review to Anthropic's community marketplace at
+<https://claude.ai/settings/plugins/submit> (run `claude plugin validate` first).
+Approved plugins are installable via `@claude-community`.
+
+Both skills are MIT-licensed (matching the library). `watercolor-charts` needs no
+install or build; `watercolor-render` runs `npm install` in its `scripts/` folder
+on first use (locate it via `${CLAUDE_PLUGIN_ROOT}` when installed as a plugin).
+
+### Versioning
+Bump `version` in `plugins/watercolorviz/.claude-plugin/plugin.json` on each
+release (don't also set it in the marketplace entry — `plugin.json` wins). To ship
+a new library version, bump the `@0.1.0` CDN pin in `watercolor-charts/SKILL.md` +
+`templates/*.html` and the `watercolorviz` version in
+`watercolor-render/scripts/package.json`.

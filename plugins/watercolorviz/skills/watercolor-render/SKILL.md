@@ -23,10 +23,24 @@ Requires a Node environment where you can install npm packages (the `canvas`
 native module compiles on install). If that's not available, fall back to
 `watercolor-charts` and have the user export from the browser.
 
+## Locating the scripts
+
+This skill's scripts live in a `scripts/` folder **next to this SKILL.md**. When
+the skill is installed as a plugin, that folder is inside the plugin's install
+directory, exposed via the `${CLAUDE_PLUGIN_ROOT}` environment variable:
+
+```sh
+SCRIPTS="${CLAUDE_PLUGIN_ROOT}/skills/watercolor-render/scripts"
+```
+
+Use `$SCRIPTS` (or the absolute path you resolved this SKILL.md from) for every
+`node …` and `npm install` command below — don't assume the current working
+directory is the scripts folder.
+
 ## Setup (once per sandbox)
 
 ```sh
-cd scripts
+cd "$SCRIPTS"
 npm install        # installs watercolorviz, d3, and canvas (native build)
 ```
 
