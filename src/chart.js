@@ -153,10 +153,14 @@ export class Chart {
     this.config = { ...this.config, ...config };
     // Re-derive config-dependent state that the constructor set up.
     this.ink = this.config.ink || INK;
+    const prevPaper = this.paper;
     this.paper = this.config.paper;
     if (this.config.seed != null) this.seed = this.config.seed;
     this._computeLayout();
-    this._paperCache = null; // paper colour may have changed
+    // Only drop the (expensive, per-pixel) paper cache when the paper colour
+    // actually changed; paintBackground also rebuilds it on a size change.
+    // Nuking it on EVERY update made live tweaks (sliders, recolour) sluggish.
+    if (this.paper !== prevPaper) this._paperCache = null;
     this._selectionProgress.clear();
     this._hoverTarget = null;
     this._pointer = null;

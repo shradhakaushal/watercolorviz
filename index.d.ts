@@ -167,6 +167,23 @@ type CartesianConfig = BaseConfig & AxisLegendConfig & ScaleConfig;
 
 export type SeriesInput = Record<string, number[]>;
 
+/** Configurable watercolor fill style for the rectangular-wash charts. Any
+ *  subset; omitted keys keep the tuned defaults. */
+export interface WashFillStyle {
+  /** Paper-tooth speckle. 0 = a smooth flat wash, higher = grainier. */
+  granulation?: number;
+  /** How far the hand-painted edge wavers. */
+  bleed?: number;
+  /** Broad cloudy pooling within the wash. */
+  mottle?: number;
+  /** Directional gradient strength (kept low for a flat matte wash). */
+  shading?: number;
+  /** Pigment pooled at the rim — the wet-on-dry bead. */
+  edgeDarkening?: number;
+  /** Overall pigment depth (lighter ↔ darker inner). */
+  intensity?: number;
+}
+
 export interface BarConfig extends CartesianConfig {
   data: {
     labels: Array<string | number>;
@@ -175,6 +192,8 @@ export interface BarConfig extends CartesianConfig {
     names?: string[];
   };
   horizontal?: boolean;
+  /** Override the watercolor fill style (texture / depth). */
+  fill?: WashFillStyle;
 }
 
 export interface LineConfig extends CartesianConfig {

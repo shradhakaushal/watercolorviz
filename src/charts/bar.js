@@ -75,7 +75,7 @@ export class Bar extends Chart {
         const idx = i * S + s;
         const color = this.colorFor(s);
         paintRectWashReveal(ctx, bx, top, bw, bh, {
-          color, seed: seed + idx * 13, ink, progress: this.loadProgress(idx), reveal: 'up',
+          color, seed: seed + idx * 13, ink, fill: config.fill, progress: this.loadProgress(idx), reveal: 'up',
         });
         marks.push({ index: idx, x: bx, y: top, w: bw, h: bh, color, seed: seed + idx * 13, label: `${sr.name} — ${lab}: ${v}` });
       });
@@ -133,7 +133,7 @@ export class Bar extends Chart {
         const idx = i * S + s;
         const color = this.colorFor(s);
         paintRectWashReveal(ctx, left, by, bw, bh, {
-          color, seed: seed + idx * 13, ink, progress: this.loadProgress(idx), reveal: 'right',
+          color, seed: seed + idx * 13, ink, fill: config.fill, progress: this.loadProgress(idx), reveal: 'right',
         });
         marks.push({ index: idx, x: left, y: by, w: bw, h: bh, color, seed: seed + idx * 13, label: `${sr.name} — ${lab}: ${v}` });
       });
@@ -188,6 +188,7 @@ export class Bar extends Chart {
         color,
         seed: seed + i * 13,
         ink,
+        fill: config.fill,
         progress: this.loadProgress(i),
         reveal: 'up',
       });
@@ -246,6 +247,7 @@ export class Bar extends Chart {
         color,
         seed: seed + i * 13,
         ink,
+        fill: config.fill,
         progress: this.loadProgress(i),
         reveal: 'right',
       });

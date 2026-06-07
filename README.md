@@ -8,7 +8,29 @@ Built for **qualitative, uncertainty-friendly** storytelling rather than precisi
 > Status: all v1 chart types implemented (vanilla JS, Canvas, D3 for the math).
 
 ## The charts
-All ride a single **watercolor fill engine** plus hand-drawn ink chrome:
+All ride a single **watercolor fill engine** plus hand-drawn ink chrome. A few of them,
+painted on the same cold-press paper:
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/charts/bar.png" alt="Watercolor bar chart" width="420"><br /><sub><b>Bar</b> (single, grouped, horizontal)</sub></td>
+    <td align="center"><img src="assets/charts/stream.png" alt="Watercolor streamgraph" width="420"><br /><sub><b>Streamgraph</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/charts/area.png" alt="Watercolor area chart" width="420"><br /><sub><b>Area</b></sub></td>
+    <td align="center"><img src="assets/charts/stacked.png" alt="Watercolor stacked area chart" width="420"><br /><sub><b>Stacked area</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/charts/interval.png" alt="Watercolor confidence interval band" width="420"><br /><sub><b>Confidence interval</b></sub></td>
+    <td align="center"><img src="assets/charts/radar.png" alt="Watercolor radar chart" width="420"><br /><sub><b>Radar / spider</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/charts/annotated.png" alt="Line chart with hand-drawn annotations" width="420"><br /><sub><b>Annotations</b> (on any chart)</sub></td>
+    <td align="center"><img src="assets/charts/calendar.png" alt="Watercolor calendar heatmap" width="420"><br /><sub><b>Calendar heatmap</b></sub></td>
+  </tr>
+</table>
+
+The full set, each mapping to a class:
 
 | Family | Charts |
 |---|---|
