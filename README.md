@@ -53,6 +53,7 @@ new Line('#el', {
   data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] },
   annotations: [
     { type: 'circle', at: [5, 60], r: 22 },
+    { type: 'arrow', from: [1, 32], to: [3, 50] },           // arrow uses from/to (not at)
     { type: 'callout', at: [2, 64], to: [5, 60], text: 'new high' },
     { type: 'text', at: ['50%', '10%'], text: 'note' },
     { type: 'band', from: 3, to: 5, label: 'peak window' },   // highlight an x-range
