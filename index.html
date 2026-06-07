@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>watercolorviz · watercolor-style data visualizations</title>
+    <meta
+      name="description"
+      content="watercolorviz is a JavaScript library for soft, hand-painted watercolor charts in the browser. Interactive, responsive and accessible out of the box."
+    />
+
+    <!-- d3 is a peer dependency; loaded from a CDN for this static demo. -->
+    <script type="importmap">
+      { "imports": { "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm" } }
+    </script>
+
+    <!-- The handwriting font carries half the aesthetic. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        /* A calm pastel blue-green sheet, not white. */
+        --pastel-a: #dcebe2;
+        --pastel-b: #cfe2ea;
+        --ink: #2b2a26;
+        --muted: #5f6b62;
+        --card: rgba(255, 255, 255, 0.6);
+        --card-border: rgba(83, 99, 88, 0.18);
+        --accent: #c8604f;
+        --accent-soft: rgba(200, 96, 79, 0.12);
+        /* Green accent for the interactive controls (sliders, toggles). */
+        --ui: #3f9d63;
+        --shadow: 0 14px 40px rgba(54, 70, 60, 0.16);
+        --hand: 'Caveat', 'Comic Sans MS', cursive;
+        --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family: var(--sans);
+        line-height: 1.55;
+        background:
+          radial-gradient(1200px 600px at 80% -10%, rgba(255, 255, 255, 0.55), transparent 60%),
+          linear-gradient(165deg, var(--pastel-a) 0%, var(--pastel-b) 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .wrap {
+        width: min(1080px, calc(100vw - 36px));
+        margin: 0 auto;
+      }
+
+      /* ---------- Hero ---------- */
+      header.hero {
+        padding: 56px 0 26px;
+        text-align: center;
+      }
+
+      .wordmark {
+        font-family: var(--hand);
+        font-weight: 700;
+        font-size: clamp(54px, 11vw, 104px);
+        line-height: 0.9;
+        margin: 0;
+        letter-spacing: 0.5px;
+        background: linear-gradient(120deg, #5a86b6, #6aa37f 45%, #c8604f);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 3px 10px rgba(54, 70, 60, 0.15));
+      }
+
+      .tagline {
+        font-size: clamp(16px, 2.4vw, 21px);
+        color: var(--muted);
+        max-width: 640px;
+        margin: 14px auto 0;
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        margin-top: 26px;
+      }
+
+      .install {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 14px;
+        background: rgba(40, 44, 38, 0.9);
+        color: #f4ecdd;
+        padding: 11px 16px;
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        display: inline-flex;
+        gap: 10px;
+        align-items: center;
+        cursor: pointer;
+        border: 0;
+      }
+      .install .dollar {
+        color: #8fb89a;
+      }
+      .install .copy {
+        font-family: var(--sans);
+        font-size: 11px;
+        color: #b7c3ac;
+        border-left: 1px solid rgba(255, 255, 255, 0.18);
+        padding-left: 10px;
+      }
+
+      .btn {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 14px;
+        padding: 11px 18px;
+        border-radius: 10px;
+        border: 1px solid var(--card-border);
+        background: var(--card);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+      }
+      .btn:hover {
+        text-decoration: none;
+        transform: translateY(-1px);
+      }
+
+      /* ---------- Sections ---------- */
+      section {
+        margin: 40px 0;
+      }
+      .section-title {
+        font-family: var(--hand);
+        font-size: clamp(28px, 5vw, 40px);
+        margin: 0 0 4px;
+      }
+      .section-sub {
+        color: var(--muted);
+        margin: 0 0 20px;
+        max-width: 620px;
+      }
+
+      /* ---------- Featured card with live controls ---------- */
+      .feature {
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        padding: 18px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+        gap: 22px;
+        align-items: stretch;
+      }
+      .feature .chart {
+        width: 100%;
+      }
+      .controls h3 {
+        font-family: var(--hand);
+        font-size: 26px;
+        margin: 2px 0 2px;
+      }
+      .controls p {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 16px;
+      }
+      .control-row {
+        margin-bottom: 16px;
+      }
+      .control-row > label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 7px;
+      }
+      .swatches {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .swatch {
+        width: 34px;
+        height: 26px;
+        border-radius: 7px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        padding: 0;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+      }
+      .swatch[aria-pressed='true'] {
+        border-color: var(--ink);
+      }
+      .swatch.picker {
+        padding: 0;
+        background: none;
+        cursor: pointer;
+      }
+      input[type='range'].slider {
+        width: 100%;
+        accent-color: var(--ui);
+        cursor: pointer;
+        margin: 2px 0 0;
+      }
+      .range-val {
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--ui);
+        font-size: 12px;
+      }
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .mini {
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 9px;
+        border: 1px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+      }
+      .mini:hover {
+        background: #fff;
+      }
+      .mini[aria-pressed='true'] {
+        background: var(--ui);
+        color: #fff;
+        border-color: var(--ui);
+      }
+
+      /* ---------- Gallery grid ---------- */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .card.wide {
+        grid-column: 1 / -1;
+      }
+      .card h3 {
+        font-family: var(--hand);
+        font-size: 27px;
+        margin: 0;
+      }
+      .card .cap {
+        color: var(--muted);
+        font-size: 13.5px;
+        margin: 0 0 12px;
+      }
+      .card .chart {
+        width: 100%;
+      }
+      canvas {
+        display: block;
+        border-radius: 8px;
+      }
+
+      details.code {
+        margin-top: 12px;
+        border-top: 1px solid var(--card-border);
+        padding-top: 10px;
+      }
+      details.code summary {
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        list-style: none;
+      }
+      details.code summary::-webkit-details-marker {
+        display: none;
+      }
+      details.code summary::before {
+        content: '› ';
+        display: inline-block;
+        transition: transform 0.15s;
+      }
+      details.code[open] summary::before {
+        transform: rotate(90deg);
+      }
+      pre {
+        margin: 10px 0 0;
+        background: #2b2c28;
+        color: #e9e2d2;
+        padding: 14px;
+        border-radius: 10px;
+        overflow-x: auto;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 12.5px;
+        line-height: 1.55;
+      }
+      pre .k { color: #d98a73; }
+      pre .s { color: #a3c293; }
+      pre .c { color: #7f8a7c; font-style: italic; }
+
+      /* ---------- Getting started ---------- */
+      .start {
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        padding: 24px 26px;
+      }
+      .start ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .start li {
+        margin-bottom: 14px;
+      }
+      .start pre {
+        margin-top: 8px;
+      }
+
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 30px 0 50px;
+      }
+
+      @media (max-width: 820px) {
+        .feature {
+          grid-template-columns: 1fr;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <!-- ===================== HERO ===================== -->
+      <header class="hero">
+        <h1 class="wordmark">watercolorviz</h1>
+        <p class="tagline">
+          A JavaScript library for <b>watercolor-style data visualizations</b>: soft bleeding
+          edges, translucent layered washes and paper-grain texture. The medium is paint, not
+          pixels.
+        </p>
+
+        <div class="cta">
+          <button class="install" id="install" title="Click to copy">
+            <span><span class="dollar">$</span> npm install watercolorviz d3</span>
+            <span class="copy" id="copyLabel">copy</span>
+          </button>
+          <a class="btn" href="https://github.com/shradhakaushal/watercolorviz">★ GitHub</a>
+          <a class="btn" href="#start">Get started</a>
+        </div>
+      </header>
+
+      <!-- ===================== FEATURED + CONTROLS ===================== -->
+      <section>
+        <h2 class="section-title">Paint with it, live</h2>
+        <p class="section-sub">
+          Every chart is a live object. Recolor it, dial the paper texture, deepen the pigment,
+          re-roll the brush or flip it sideways, and each change calls
+          <code>chart.update(&hellip;)</code> and re-paints. Hover the bars to feel the selection
+          bloom.
+        </p>
+
+        <div class="feature">
+          <div class="chart" id="featured"></div>
+
+          <div class="controls">
+            <h3>Bar chart</h3>
+            <p>Coffees poured this week. Tweak it &rarr;</p>
+
+            <div class="control-row">
+              <label>Color</label>
+              <div class="swatches" id="colors"></div>
+            </div>
+
+            <div class="control-row">
+              <label>Texture · <span class="range-val" id="textureVal">soft grain</span></label>
+              <input class="slider" type="range" id="texture" min="0" max="100" value="22" />
+            </div>
+
+            <div class="control-row">
+              <label>Pigment depth · <span class="range-val" id="depthVal">medium</span></label>
+              <input class="slider" type="range" id="depth" min="0" max="100" value="38" />
+            </div>
+
+            <div class="control-row">
+              <label>Brush &amp; layout</label>
+              <div class="btn-row">
+                <button class="mini" id="shuffle">🎲 New brush</button>
+                <button class="mini" id="orient" aria-pressed="false">↻ Horizontal</button>
+                <button class="mini" id="replay">▶ Replay</button>
+              </div>
+            </div>
+
+            <div class="control-row">
+              <label>Animation</label>
+              <div class="btn-row">
+                <button class="mini" id="anim" aria-pressed="true">Reveal: on</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== GALLERY ===================== -->
+      <section>
+        <h2 class="section-title">A few of the charts</h2>
+        <p class="section-sub">
+          Nine chart types ride a single watercolor fill engine, plus a hand-drawn annotation
+          layer that works on any of them. Here's a sampler; every one is interactive: hover a mark
+          for its value, or tab in and use the arrow keys.
+        </p>
+
+        <div class="grid">
+          <article class="card">
+            <h3>Streamgraph</h3>
+            <p class="cap">Stacked flows with a soft, organic centerline.</p>
+            <div class="chart" id="stream"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> StackedArea(<span class="s">'#chart'</span>, {
+  stream: <span class="k">true</span>,
+  data: { x, series },
+});</pre>
+            </details>
+          </article>
+
+          <article class="card">
+            <h3>Area chart</h3>
+            <p class="cap">A single translucent wash under a hand-drawn edge.</p>
+            <div class="chart" id="area"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> Area(<span class="s">'#chart'</span>, {
+  data: { x, y },
+  color: <span class="s">'#6f93c2'</span>,
+});</pre>
+            </details>
+          </article>
+
+          <article class="card">
+            <h3>Confidence interval</h3>
+            <p class="cap">Honest uncertainty: the band literally looks blurry.</p>
+            <div class="chart" id="interval"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> Interval(<span class="s">'#chart'</span>, {
+  <span class="c">// a band you can see the doubt in</span>
+  data: { x, y, lo, hi },
+  color: <span class="s">'#6f93c2'</span>,
+});</pre>
+            </details>
+          </article>
+
+          <article class="card">
+            <h3>Radar</h3>
+            <p class="cap">Translucent washes over a hand-drawn web, two profiles compared.</p>
+            <div class="chart" id="radar"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> Radar(<span class="s">'#chart'</span>, {
+  data: {
+    axes: [<span class="s">'Speed'</span>, <span class="s">'Power'</span>, <span class="s">'Range'</span>, &hellip;],
+    series: [[7, 5, 8, &hellip;], [4, 8, 6, &hellip;]],
+  },
+  seriesNames: [<span class="s">'Model A'</span>, <span class="s">'Model B'</span>],
+});</pre>
+            </details>
+          </article>
+
+          <article class="card">
+            <h3>Stacked area</h3>
+            <p class="cap">Bands stacked from a zero baseline, with a built-in legend.</p>
+            <div class="chart" id="stacked"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> StackedArea(<span class="s">'#chart'</span>, {
+  data: { x, series: { Alpha, Beta, Gamma } },
+  colors: [<span class="s">'#dc8068'</span>, <span class="s">'#94a854'</span>, <span class="s">'#6f93c2'</span>],
+});</pre>
+            </details>
+          </article>
+
+          <article class="card">
+            <h3>Annotations</h3>
+            <p class="cap">Circles, callouts and highlight bands, on any chart, in data coords.</p>
+            <div class="chart" id="annotated"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> Line(<span class="s">'#chart'</span>, {
+  data: { x, y },
+  annotations: [
+    { type: <span class="s">'band'</span>, from: 3, to: 5, label: <span class="s">'surge'</span> },
+    { type: <span class="s">'circle'</span>, at: [5, 60], r: 20 },
+    { type: <span class="s">'callout'</span>, at: [1, 60], to: [5, 60], text: <span class="s">'new high'</span> },
+  ],
+});</pre>
+            </details>
+          </article>
+
+          <article class="card wide">
+            <h3>Daily activity</h3>
+            <p class="cap">A calendar heatmap, one wash per day, six months of it.</p>
+            <div class="chart" id="calendar"></div>
+            <details class="code">
+              <summary>Show code</summary>
+              <pre><span class="k">new</span> Calendar(<span class="s">'#chart'</span>, {
+  data: { days: [{ date, value }, &hellip;] },
+  color: <span class="s">'#4ca85f'</span>,
+});</pre>
+            </details>
+          </article>
+        </div>
+      </section>
+
+      <!-- ===================== GETTING STARTED ===================== -->
+      <section id="start">
+        <h2 class="section-title">Set it up in a minute</h2>
+        <p class="section-sub">
+          No build step required. watercolorviz is plain ES modules; <code>d3</code> is a peer
+          dependency you control.
+        </p>
+
+        <div class="start">
+          <ol>
+            <li>
+              <b>Install</b> from npm (or skip straight to the import map below for a no-bundler
+              setup):
+              <pre><span class="k">npm</span> install watercolorviz d3</pre>
+            </li>
+            <li>
+              <b>Import a chart and go.</b> Give it a selector, some data, and optional shared
+              options (<code>color</code>, <code>colors</code>, <code>ink</code>,
+              <code>paper</code>, <code>title</code>, <code>seed</code>, <code>width</code>&hellip;):
+              <pre><span class="k">import</span> { Bar } <span class="k">from</span> <span class="s">'watercolorviz'</span>;
+
+<span class="k">new</span> Bar(<span class="s">'#chart'</span>, {
+  data: { labels: [<span class="s">'A'</span>, <span class="s">'B'</span>, <span class="s">'C'</span>], values: [30, 55, 42] },
+});</pre>
+            </li>
+            <li>
+              <b>No bundler?</b> Load it straight in the browser with an import map and a canvas:
+              <pre><span class="k">&lt;script</span> type=<span class="s">"importmap"</span><span class="k">&gt;</span>
+  { <span class="s">"imports"</span>: { <span class="s">"d3"</span>: <span class="s">"https://cdn.jsdelivr.net/npm/d3@7/+esm"</span> } }
+<span class="k">&lt;/script&gt;</span>
+<span class="k">&lt;div</span> id=<span class="s">"chart"</span><span class="k">&gt;&lt;/div&gt;</span>
+<span class="k">&lt;script</span> type=<span class="s">"module"</span><span class="k">&gt;</span>
+  <span class="k">import</span> { Bar } <span class="k">from</span> <span class="s">'watercolorviz'</span>;
+  <span class="k">new</span> Bar(<span class="s">'#chart'</span>, { data: { labels: [<span class="s">'A'</span>, <span class="s">'B'</span>], values: [30, 55] } });
+<span class="k">&lt;/script&gt;</span></pre>
+            </li>
+            <li>
+              <b>Want the handwriting look?</b> Load
+              <a href="https://fonts.google.com/specimen/Caveat">Caveat</a> (it degrades to a cursive
+              fallback otherwise), then read the
+              <a href="https://github.com/shradhakaushal/watercolorviz#readme">full README</a> for
+              multi-series data, scales, axes, annotations and the <code>update / onClick / onHover /
+              toDataURL / destroy</code> instance API.
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <footer>
+        Painted with <b>watercolorviz</b> · MIT licensed ·
+        <a href="https://github.com/shradhakaushal/watercolorviz">github.com/shradhakaushal/watercolorviz</a>
+        <br />
+        Inspired by <a href="https://github.com/jwilber/roughViz">roughViz</a>.
+      </footer>
+    </div>
+
+    <!-- ===================== THE CHARTS ===================== -->
+    <script type="module">
+      const m = await import('./src/index.js');
+      const { Bar, StackedArea, Area, Interval, Radar, Line, Calendar } = m;
+
+      // Wait for the web font so the first paint uses it (canvas text needs the
+      // font loaded before drawing).
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.load('22px Caveat');
+          await document.fonts.ready;
+        } catch (e) {
+          /* fall back to the cursive stack */
+        }
+      }
+
+      // Small seeded RNG so the demo data is stable across reloads.
+      let s = 9;
+      const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+      /* ---------- Featured bar with live controls ---------- */
+      const coffeeLabels = ['Espresso', 'Latte', 'Mocha', 'Drip', 'Cold Brew'];
+      const coffeeValues = [42, 65, 38, 50, 28];
+      let barSeed = 7;
+      let horizontal = false;
+      let animation = true;
+      let color = '#e2734e'; // one coral wash for every bar, fully configurable
+
+      // Map the two sliders to the chart's watercolor fill style.
+      const textureEl = document.getElementById('texture');
+      const depthEl = document.getElementById('depth');
+      const textureVal = document.getElementById('textureVal');
+      const depthVal = document.getElementById('depthVal');
+      const readFill = () => {
+        const t = +textureEl.value / 100;
+        const d = +depthEl.value / 100;
+        return {
+          granulation: +(0.04 + 0.66 * t).toFixed(3), // paper-tooth speckle
+          bleed: +(0.02 + 0.045 * t).toFixed(3), // edge waver
+          mottle: +(0.18 + 0.26 * t).toFixed(3), // cloudy pooling
+          intensity: +(0.8 + 0.9 * d).toFixed(3), // pigment depth
+          edgeDarkening: +(0.3 + 1.0 * d).toFixed(3), // wet-on-dry rim
+        };
+      };
+
+      const bar = new Bar('#featured', {
+        title: 'Coffees poured this week',
+        data: { labels: coffeeLabels, values: coffeeValues },
+        color, // a single colour → every bar the same wash
+        fill: readFill(),
+        yLabel: 'cups',
+        seed: barSeed,
+        width: '100%',
+        aspect: 0.52,
+        tooltipFormat: (mark) => `${mark.label}: ${coffeeValues[mark.index]} cups`,
+      });
+
+      // Colour: a few one-colour presets plus a custom picker (one colour each).
+      const colorBox = document.getElementById('colors');
+      const presets = ['#e2734e', '#c8604f', '#e0a93f', '#4ca8a3', '#5f86b6', '#9d7bb0'];
+      const picker = document.createElement('input');
+      const syncColor = (c) => {
+        color = c;
+        // animation:false → instant repaint, no re-reveal on every tweak.
+        bar.update({ color: c, animation: false });
+        [...colorBox.querySelectorAll('button')].forEach((el) =>
+          el.setAttribute('aria-pressed', String(el.dataset.color === c)),
+        );
+        if (picker.value !== c) picker.value = c;
+      };
+      presets.forEach((c) => {
+        const b = document.createElement('button');
+        b.className = 'swatch';
+        b.dataset.color = c;
+        b.style.background = c;
+        b.title = c;
+        b.setAttribute('aria-pressed', String(c === color));
+        b.addEventListener('click', () => syncColor(c));
+        colorBox.appendChild(b);
+      });
+      picker.type = 'color';
+      picker.value = color;
+      picker.className = 'swatch picker';
+      picker.title = 'Custom colour';
+      picker.setAttribute('aria-label', 'Custom bar colour');
+      picker.addEventListener('input', () => syncColor(picker.value));
+      colorBox.appendChild(picker);
+
+      // Fill-style sliders → chart.update({ fill }).
+      const fillLabels = () => {
+        const t = +textureEl.value;
+        const d = +depthEl.value;
+        textureVal.textContent = t < 22 ? 'smooth' : t < 60 ? 'soft grain' : 'grainy';
+        depthVal.textContent = d < 30 ? 'light' : d < 66 ? 'medium' : 'deep';
+      };
+      // Coalesce rapid slider input into a single repaint per animation frame.
+      let fillRaf = 0;
+      const applyFill = () => {
+        fillLabels();
+        if (fillRaf) return;
+        fillRaf = requestAnimationFrame(() => {
+          fillRaf = 0;
+          bar.update({ fill: readFill(), animation: false });
+        });
+      };
+      textureEl.addEventListener('input', applyFill);
+      depthEl.addEventListener('input', applyFill);
+      fillLabels();
+
+      document.getElementById('shuffle').addEventListener('click', () => {
+        barSeed = Math.floor(Math.random() * 1000);
+        bar.update({ seed: barSeed, animation: false });
+      });
+
+      const orientBtn = document.getElementById('orient');
+      orientBtn.addEventListener('click', () => {
+        horizontal = !horizontal;
+        orientBtn.setAttribute('aria-pressed', String(horizontal));
+        orientBtn.textContent = horizontal ? '↻ Vertical' : '↻ Horizontal';
+        bar.update({ horizontal, animation: false });
+      });
+
+      // Replay re-runs the entrance reveal (honouring the Reveal toggle).
+      document.getElementById('replay').addEventListener('click', () => bar.update({ animation }));
+
+      const animBtn = document.getElementById('anim');
+      animBtn.addEventListener('click', () => {
+        animation = !animation;
+        animBtn.setAttribute('aria-pressed', String(animation));
+        animBtn.textContent = animation ? 'Reveal: on' : 'Reveal: off';
+        bar.update({ animation });
+      });
+
+      /* ---------- Streamgraph ---------- */
+      const streamX = Array.from({ length: 44 }, (_, i) => i);
+      const stream = {};
+      for (let k = 0; k < 7; k++) {
+        let v = 0.6 + rnd();
+        stream['Series ' + (k + 1)] = streamX.map((_, i) => {
+          v = Math.max(0.15, v + (rnd() - 0.5) * 0.9);
+          return v + 0.4 * Math.sin(i / 3 + k);
+        });
+      }
+      new StackedArea('#stream', {
+        stream: true,
+        data: { x: streamX, series: stream },
+        width: '100%',
+        aspect: 0.62,
+        seed: 4,
+      });
+
+      /* ---------- Area ---------- */
+      const areaX = Array.from({ length: 28 }, (_, i) => i);
+      const areaY = areaX.map((i) => 34 + 22 * Math.sin(i / 3.4) + 9 * Math.sin(i / 1.3) + 12);
+      new Area('#area', {
+        data: { x: areaX, y: areaY },
+        color: '#6f93c2',
+        width: '100%',
+        aspect: 0.62,
+        seed: 7,
+      });
+
+      /* ---------- Confidence interval ---------- */
+      const ivX = Array.from({ length: 40 }, (_, i) => i);
+      const ivY = ivX.map((i) => 40 + 18 * Math.sin(i / 6));
+      const ivSd = ivX.map((i) => 6 + i * 0.45);
+      new Interval('#interval', {
+        data: {
+          x: ivX,
+          y: ivY,
+          lo: ivY.map((v, i) => v - ivSd[i]),
+          hi: ivY.map((v, i) => v + ivSd[i]),
+        },
+        color: '#6f93c2',
+        width: '100%',
+        aspect: 0.62,
+        seed: 7,
+      });
+
+      /* ---------- Radar ---------- */
+      new Radar('#radar', {
+        data: {
+          axes: ['Speed', 'Power', 'Range', 'Comfort', 'Economy', 'Tech'],
+          series: [
+            [7, 5, 8, 6, 4, 7],
+            [4, 8, 6, 7, 7, 5],
+          ],
+        },
+        seriesNames: ['Model A', 'Model B'],
+        colors: ['#6f93c2', '#dc8068'],
+        width: '100%',
+        aspect: 0.72,
+        seed: 5,
+      });
+
+      /* ---------- Stacked area ---------- */
+      const stX = Array.from({ length: 30 }, (_, i) => i);
+      const wave = (c, w, a) => stX.map((i) => a * Math.exp(-((i - c) ** 2) / (2 * w * w)) + a * 0.2);
+      new StackedArea('#stacked', {
+        data: { x: stX, series: { Alpha: wave(8, 7, 20), Beta: wave(16, 6, 26), Gamma: wave(22, 9, 18) } },
+        colors: ['#dc8068', '#94a854', '#6f93c2'],
+        width: '100%',
+        aspect: 0.62,
+        seed: 2,
+      });
+
+      /* ---------- Annotated line ---------- */
+      new Line('#annotated', {
+        data: { x: [0, 1, 2, 3, 4, 5], y: [20, 32, 28, 50, 41, 60] },
+        color: '#6f93c2',
+        width: '100%',
+        aspect: 0.62,
+        seed: 2,
+        annotations: [
+          { type: 'band', from: 3, to: 5, label: 'surge', color: '#e0a93f' },
+          { type: 'circle', at: [5, 60], r: 20 },
+          { type: 'callout', at: [1, 60], to: [5, 60], text: 'new high' },
+        ],
+      });
+
+      /* ---------- Calendar / daily activity ---------- */
+      const days = [];
+      const start = new Date('2025-01-06');
+      for (let i = 0; i < 182; i++) {
+        days.push({ date: new Date(start.getTime() + i * 86400000), value: Math.max(0, rnd() * rnd() * 10) });
+      }
+      new Calendar('#calendar', {
+        data: { days },
+        color: '#4ca85f',
+        width: '100%',
+        height: 210,
+        seed: 6,
+      });
+
+      /* ---------- Copy-to-clipboard for the install line ---------- */
+      const installBtn = document.getElementById('install');
+      installBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText('npm install watercolorviz d3');
+          const label = document.getElementById('copyLabel');
+          label.textContent = 'copied!';
+          setTimeout(() => (label.textContent = 'copy'), 1400);
+        } catch (e) {
+          /* clipboard blocked, ignore */
+        }
+      });
+    </script>
+  </body>
+</html>

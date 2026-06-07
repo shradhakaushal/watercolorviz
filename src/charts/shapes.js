@@ -36,10 +36,30 @@ export function rectPoints(x, y, w, h, per = 5) {
 }
 
 // The tuned rectangular-wash fill (matches the reference dashboard): flat matte
-// shading, strong fine-grained granulation (cold-press tooth), gentle mottle,
-// dense enough to read as pigment. Bump CACHE_REV if the recipe changes so old
-// cached marks are not reused.
-const CACHE_REV = 2;
+// shading, a fine paper tooth, gentle mottle, dense enough to read as pigment.
+// Bump CACHE_REV if the recipe changes so old cached marks are not reused.
+const CACHE_REV = 3;
+
+// Default fill recipe for the rectangular wash (bar/histogram/heatmap/…). These
+// are the knobs a chart can override per-call via `opts.fill` to offer a
+// configurable fill style:
+//   granulation  paper-tooth speckle (0 = smooth flat wash, higher = grainier)
+//   bleed        how far the hand-painted edge wavers
+//   mottle       broad cloudy pooling within the wash
+//   shading      directional gradient (kept low → a flat matte wash, not a ball)
+//   edgeDarkening pigment pooled at the rim (the wet-on-dry bead)
+//   intensity    overall pigment depth (lighter ↔ darker inner)
+// Granulation is deliberately modest: high values punch the paper through the
+// pigment as light specks, which reads as noise rather than watercolor.
+const RECT_FILL = {
+  intensity: 1.1,
+  bleed: 0.03,
+  shading: 0.15,
+  mottle: 0.26,
+  granulation: 0.2,
+  edgeDarkening: 1.0,
+  paperScale: 0.3,
+};
 
 // Global fill depth — every chart fill is a little DARKER than the raw engine
 // default so a lighter annotation highlight (band/callout) reads clearly on top
@@ -357,20 +377,28 @@ export function paintWedgeSelection(ctx, cx, cy, r0, r1, a0, a1, opts = {}) {
 }
 
 export function paintRectWash(ctx, x, y, w, h, opts = {}) {
-  const { color, seed = 1, outline = true, intensity = 1.1, ink } = opts;
-  // Content-addressed cache key: identical geometry+color+seed reuses the paint.
-  const cacheKey = `rect:${CACHE_REV}:${Math.round(x)},${Math.round(y)},${Math.round(w)},${Math.round(h)}:${color}:${seed}:${intensity}:${outline}:${ink}`;
+  const { color, seed = 1, outline = true, ink, fill = {} } = opts;
+  // Merge any per-call fill-style overrides over the tuned defaults. A bare
+  // top-level `intensity` is still honoured (back-compat) unless `fill.intensity`
+  // is given explicitly.
+  const f = { ...RECT_FILL, ...fill };
+  if (opts.intensity != null && fill.intensity == null) f.intensity = opts.intensity;
+  // Content-addressed cache key: identical geometry + colour + recipe reuses the
+  // paint. The fill signature is included so changing the fill style re-renders.
+  const fsig = `${f.intensity},${f.bleed},${f.shading},${f.mottle},${f.granulation},${f.edgeDarkening},${f.paperScale}`;
+  const cacheKey = `rect:${CACHE_REV}:${Math.round(x)},${Math.round(y)},${Math.round(w)},${Math.round(h)}:${color}:${seed}:${outline}:${ink}:${fsig}`;
   paintPolygon(ctx, rectPoints(x, y, w, h), {
     color,
     seed,
     outline,
-    intensity: intensity * FILL_DEPTH,
     outlineColor: ink,
-    bleed: 0.03, // keep it rectangular; just a hand-painted waver
-    shading: 0.15, // a flat matte wash — NOT a glossy 3D gradient
-    mottle: 0.28, // gentle cloud; let the grain (not big blotches) dominate
-    granulation: 0.55, // strong cold-press paper grain (the reference look)
-    paperScale: 0.3, // finer tooth → fine even speckle, not soft blobs
+    intensity: f.intensity * FILL_DEPTH,
+    bleed: f.bleed, // keep it rectangular; just a hand-painted waver
+    shading: f.shading, // a flat matte wash — NOT a glossy 3D gradient
+    mottle: f.mottle, // gentle cloud; let the grain (not big blotches) dominate
+    granulation: f.granulation, // paper grain; modest so paper doesn't speckle through
+    edgeDarkening: f.edgeDarkening,
+    paperScale: f.paperScale,
     cacheKey,
   });
 }
