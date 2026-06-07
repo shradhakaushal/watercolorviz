@@ -46,8 +46,14 @@ export interface CircleAnnotation extends AnnotationCommon {
 }
 export interface ArrowAnnotation extends AnnotationCommon {
   type: 'arrow';
-  at: AnnotationPoint;
+  /** Tail of the arrow. (Note: arrows use `from`, not `at`.) */
+  from: AnnotationPoint;
+  /** Head of the arrow. */
   to: AnnotationPoint;
+  /** Pixel override for the tail. */
+  fromPx?: [number, number];
+  /** Pixel override for the head. */
+  toPx?: [number, number];
 }
 export interface TextAnnotation extends AnnotationCommon {
   type: 'text';
