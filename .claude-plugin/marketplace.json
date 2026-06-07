@@ -4,7 +4,7 @@
   "description": "Watercolor-style data visualization skills for Claude.",
   "plugins": [
     {
-      "name": "watercolor",
+      "name": "watercolorviz",
       "source": "./plugins/watercolorviz",
       "description": "Watercolor charts + a headless PNG renderer, as model-invoked skills. Say \"watercolor this chart\" or \"watercolify this shape\".",
       "category": "visualization",

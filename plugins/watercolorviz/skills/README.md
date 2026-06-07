@@ -52,14 +52,14 @@ skills/
 
 ## How this is packaged (plugin + marketplace)
 
-These two skills are bundled into **one Claude Code plugin** named `watercolor`,
+These two skills are bundled into **one Claude Code plugin** named `watercolorviz`,
 listed by the `watercolorviz` marketplace at the repo root:
 
 ```
 watercolorviz/                          (this repo = the marketplace)
-├── .claude-plugin/marketplace.json     # catalog → lists the "watercolor" plugin
+├── .claude-plugin/marketplace.json     # catalog → lists the "watercolorviz" plugin
 └── plugins/watercolorviz/              (the plugin)
-    ├── .claude-plugin/plugin.json      # name: "watercolor"
+    ├── .claude-plugin/plugin.json      # name: "watercolorviz"
     └── skills/                         # ← these skills (auto-discovered)
         ├── watercolor-charts/
         └── watercolor-render/
@@ -71,14 +71,14 @@ this chart" / "watercolify this shape" triggers them automatically.
 ### Install (end users)
 ```
 /plugin marketplace add shradhakaushal/watercolorviz
-/plugin install watercolor@watercolorviz
+/plugin install watercolorviz@watercolorviz
 ```
 
 ### Test locally (maintainers)
 ```
 claude plugin validate .                         # validate marketplace + plugin
 claude --plugin-dir ./plugins/watercolorviz      # load the plugin directly
-# or: /plugin marketplace add ./  then  /plugin install watercolor@watercolorviz
+# or: /plugin marketplace add ./  then  /plugin install watercolorviz@watercolorviz
 ```
 
 ### Wider discoverability
