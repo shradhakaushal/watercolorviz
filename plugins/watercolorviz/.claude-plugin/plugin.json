@@ -1,0 +1,10 @@
+{
+  "name": "watercolorviz",
+  "description": "Turn any data, an existing chart, or an arbitrary shape into a watercolor-style visualization. Bundles a zero-install charts skill (emits self-contained HTML via CDN) and a headless PNG renderer skill.",
+  "version": "0.1.0",
+  "author": { "name": "Shradha Kaushal" },
+  "homepage": "https://github.com/shradhakaushal/watercolorviz",
+  "repository": "https://github.com/shradhakaushal/watercolorviz",
+  "license": "MIT",
+  "keywords": ["dataviz", "watercolor", "charts", "visualization", "canvas", "d3"]
+}
