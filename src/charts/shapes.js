@@ -135,7 +135,7 @@ export function bandPolygon(top, bottom, extend) {
 // The arbitrary-polygon wash recipe (area/ridgeline/stacked): a soft, grainy,
 // translucent wash that follows the given OUTLINE (flat baselines stay flat,
 // the data profile stays faithful) — not the radial blob boundary.
-function areaFillOpts(color, seed, intensity) {
+function areaFillOpts(color, seed, intensity, extra = {}) {
   return {
     color,
     seed,
@@ -147,6 +147,7 @@ function areaFillOpts(color, seed, intensity) {
     granulation: 0.42,
     paperScale: 0.28,
     outline: false, // the chart inks the top contour itself (inkPath)
+    ...extra, // per-call overrides (e.g. a crisper `bleed` for stacked bands)
   };
 }
 
@@ -163,9 +164,9 @@ export function paintAreaWash(ctx, top, baselineY, opts = {}) {
 }
 
 export function paintBandWash(ctx, top, bottom, opts = {}) {
-  const { color, seed = 1, intensity = 0.95, extend } = opts;
-  const o = areaFillOpts(color, seed, intensity);
-  o.cacheKey = washKey('band', top.concat(bottom), color, seed, intensity, extendKey(extend));
+  const { color, seed = 1, intensity = 0.95, extend, bleed } = opts;
+  const o = areaFillOpts(color, seed, intensity, bleed != null ? { bleed } : {});
+  o.cacheKey = washKey('band', top.concat(bottom), color, seed, intensity, `${extendKey(extend)}|${bleed ?? ''}`);
   paintPolygon(ctx, bandPolygon(top, bottom, extend), o);
 }
 

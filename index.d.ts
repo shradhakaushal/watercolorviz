@@ -247,15 +247,31 @@ export interface RadarConfig extends BaseConfig {
   data: { axes: string[]; series: number[][] };
   max?: number;
   seriesNames?: string[];
+  /** Number of concentric web rings (default 4). */
+  rings?: number;
+  /** Colour of the web (rings + spokes). Defaults to `ink`. */
+  gridColor?: ColorString;
+  /** Web opacity; scales rings and spokes together (default ~0.12 rings / 0.18 spokes). */
+  gridOpacity?: number;
+  /** Web line width (default 1). */
+  gridWidth?: number;
 }
 
 export interface StackedAreaConfig extends CartesianConfig {
   data: { x: number[]; series: SeriesInput };
   stream?: boolean;
   maxSeries?: number;
+  /** Collapse series beyond `maxSeries` into an "Other" band (default true). */
+  groupOther?: boolean;
   boundaryColor?: ColorString;
   boundaryWidth?: number;
+  /** Opacity of the band boundary lines. */
+  boundaryOpacity?: number;
   separator?: ColorString;
+  /** Draw the lower silhouette outline on a streamgraph (default true). */
+  boundary?: boolean;
+  /** Wash edge softness (× band radius). Lower = crisper edges; default 0.022. */
+  bleed?: number;
 }
 
 export interface RidgelineConfig extends BaseConfig {

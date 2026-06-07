@@ -21,7 +21,13 @@ export class Radar extends Chart {
     const r = d3.scaleLinear().domain([0, maxV]).range([0, R]);
     const angle = (i) => -Math.PI / 2 + (i / n) * Math.PI * 2;
 
-    // Web: concentric rings + spokes (faint ink).
+    // Web: concentric rings + spokes (faint ink). `gridColor`, `gridOpacity`
+    // and `gridWidth` tune the web; gridOpacity scales both rings and spokes,
+    // keeping the spokes a touch stronger than the rings (the default look).
+    const gridColor = config.gridColor || ink;
+    const gridWidth = config.gridWidth ?? 1;
+    const ringOpacity = config.gridOpacity ?? 0.12;
+    const spokeOpacity = config.gridOpacity != null ? Math.min(1, config.gridOpacity * 1.5) : 0.18;
     const rings = config.rings || 4;
     for (let k = 1; k <= rings; k++) {
       const ring = [];
@@ -29,11 +35,11 @@ export class Radar extends Chart {
         const a = angle(i % n);
         ring.push([cx + Math.cos(a) * (R * k) / rings, cy + Math.sin(a) * (R * k) / rings]);
       }
-      inkPath(ctx, ring, { color: ink, opacity: 0.12, width: 1, seed: seed + k, gaps: false });
+      inkPath(ctx, ring, { color: gridColor, opacity: ringOpacity, width: gridWidth, seed: seed + k, gaps: false });
     }
     for (let i = 0; i < n; i++) {
       const a = angle(i);
-      inkLine(ctx, cx, cy, cx + Math.cos(a) * R, cy + Math.sin(a) * R, { color: ink, opacity: 0.18, width: 1, jitter: 0.6, seed: seed + i });
+      inkLine(ctx, cx, cy, cx + Math.cos(a) * R, cy + Math.sin(a) * R, { color: gridColor, opacity: spokeOpacity, width: gridWidth, jitter: 0.6, seed: seed + i });
       // axis label just beyond the rim
       const lx = cx + Math.cos(a) * (R + 14);
       const ly = cy + Math.sin(a) * (R + 14);
