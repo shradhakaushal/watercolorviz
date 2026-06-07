@@ -34,7 +34,7 @@ watercolorviz is loaded from jsdelivr's `+esm` bundle, which **auto-resolves its
 import { Bar, Line, Pie /* …whatever you need */ } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.1/+esm';
 ```
 
-Always pin the version (`@0.1.0`). To use the latest, the user can drop the version,
+Always pin the version (`@0.1.1`). To use the latest, the user can drop the version,
 but pinning keeps results reproducible.
 
 ## Workflow
