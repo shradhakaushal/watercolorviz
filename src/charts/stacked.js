@@ -78,22 +78,48 @@ export class StackedArea extends Chart {
 
     // Bands are drawn bottom→top; extend each band's bottom a few px DOWN into
     // the band already painted below it, so the hand-painted edges overlap and
-    // no paper seam shows between layers. Sides are pushed out + clipped so the
-    // left/right edges stay clean; the bottom band is pushed down to the axis.
-    const SEAM = 4;
+    // no paper seam shows between layers. This applies to the streamgraph too —
+    // its wiggly bands would otherwise leave white seams between layers. Sides
+    // are pushed out + clipped so the left/right edges stay clean; in the
+    // non-stream case the bottom band is also pushed down to the axis.
+    const SEAM = 6;
     const ov = 18;
+    // Crisp wash edges (small bleed) so the pigment sits ON the boundary lines
+    // instead of wobbling/retreating inward and showing paper.
+    const washBleed = config.bleed ?? 0.022;
     const marks = [];
+    // The exact outer silhouette (upper contour + lower contour). All fills are
+    // clipped to it, so the both-edge overshoot below can fill generously
+    // without ever leaking past the outline.
+    const upperSil = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(d3.max(stack, (layer) => layer[i][1]))]);
+    const lowerSil = xs.map((xv, i) => [plot.x0 + x(xv), plot.y0 + y(d3.min(stack, (layer) => layer[i][0]))]);
     this.withPlotClip(() => {
+      ctx.save();
+      ctx.beginPath();
+      upperSil.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      for (let i = lowerSil.length - 1; i >= 0; i--) ctx.lineTo(lowerSil[i][0], lowerSil[i][1]);
+      ctx.closePath();
+      ctx.clip();
       stack.forEach((layer, si) => {
         const colorIndex = names.indexOf(layer.key);
         const topPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[1])]);
         const bandBotPts = layer.map((d) => [plot.x0 + x(d.data.x), plot.y0 + y(d[0])]);
-        const paintBotPts = bandBotPts.map(([px, py]) => [px, py + (!stream && si > 0 ? SEAM : 0)]);
+        // Overlap neighbouring bands on BOTH edges: the watercolor wash feathers
+        // inward from the geometric edge, so abutting bands would leave a paper
+        // seam and the (opaque) boundary ink would land on paper. Pushing each
+        // band's top up and bottom down into its neighbours makes the pigment
+        // continuous and puts the boundary line on solid colour. The crisp
+        // boundary lines (drawn afterwards on the TRUE edges) hide the overlap.
+        // Overshoot BOTH edges into the neighbours; the silhouette clip trims
+        // the outer overshoot back to the outline, so fills stay continuous (no
+        // paper seam) AND the outer edge is crisp on the boundary line.
+        const paintTopPts = topPts.map(([px, py]) => [px, py - SEAM]);
+        const paintBotPts = bandBotPts.map(([px, py]) => [px, py + SEAM]);
         const color = colors[colorIndex];
         const reveal = this.loadProgress(si);
         const extend = { x0: plot.x0, x1: plot.x1, ov, bottomOv: !stream && si === 0 ? ov : 0 };
         withRevealClip(ctx, plot.x0, plot.y0, plot.w, plot.h, reveal, () => {
-          paintBandWash(ctx, topPts, paintBotPts, { color, seed: seed + si * 17, intensity: 0.95, extend });
+          paintBandWash(ctx, paintTopPts, paintBotPts, { color, seed: seed + si * 17, intensity: 0.95, extend, bleed: washBleed });
         });
         marks.push({
           index: si,
@@ -104,6 +130,7 @@ export class StackedArea extends Chart {
           label: layer.key,
         });
       });
+      ctx.restore(); // end the silhouette clip (fills only)
       marks.forEach((mark) => {
         paintPolygonSelection(ctx, mark.points, {
           color: mark.color,
