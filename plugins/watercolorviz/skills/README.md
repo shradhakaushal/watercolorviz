@@ -20,10 +20,10 @@ imports it from jsDelivr's `+esm` bundle, which **auto-resolves the `d3`
 dependency** — so the end user needs no npm install, no bundler, and no import map:
 
 ```js
-import { Bar } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.0/+esm';
+import { Bar } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.1/+esm';
 ```
 
-The version is pinned (`@0.1.0`) for reproducibility. To ship a new library
+The version is pinned (`@0.1.1`) for reproducibility. To ship a new library
 version, bump the pin in `watercolor-charts/SKILL.md` + `templates/*.html` and the
 `watercolorviz` version in `watercolor-render/scripts/package.json`.
 
@@ -93,6 +93,6 @@ on first use (locate it via `${CLAUDE_PLUGIN_ROOT}` when installed as a plugin).
 ### Versioning
 Bump `version` in `plugins/watercolorviz/.claude-plugin/plugin.json` on each
 release (don't also set it in the marketplace entry — `plugin.json` wins). To ship
-a new library version, bump the `@0.1.0` CDN pin in `watercolor-charts/SKILL.md` +
-`templates/*.html` and the `watercolorviz` version in
-`watercolor-render/scripts/package.json`.
+a new library version, bump the pinned `@<version>` CDN URL in
+`watercolor-charts/SKILL.md` + `templates/*.html` and the `watercolorviz` version
+in `watercolor-render/scripts/package.json`.

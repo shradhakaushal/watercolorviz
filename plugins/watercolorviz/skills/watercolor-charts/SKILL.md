@@ -31,10 +31,10 @@ watercolorviz is loaded from jsdelivr's `+esm` bundle, which **auto-resolves its
 `d3` dependency** — no import map, no install:
 
 ```js
-import { Bar, Line, Pie /* …whatever you need */ } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.0/+esm';
+import { Bar, Line, Pie /* …whatever you need */ } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.1/+esm';
 ```
 
-Always pin the version (`@0.1.0`). To use the latest, the user can drop the version,
+Always pin the version (`@0.1.1`). To use the latest, the user can drop the version,
 but pinning keeps results reproducible.
 
 ## Workflow
@@ -153,7 +153,7 @@ Beyond charts, the engine paints **any polygon** as a watercolor blob via `paint
      into points (the template shows this). Keep ~120–240 points for a smooth edge.
 2. Paint it:
    ```js
-   import { paintPaper, paintPolygon } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.0/+esm';
+   import { paintPaper, paintPolygon } from 'https://cdn.jsdelivr.net/npm/watercolorviz@0.1.1/+esm';
    paintPaper(ctx, W, H, { color: '#f9f1e6' });
    paintPolygon(ctx, points, { color: '#dc8068', seed: 7, granulation: 0.18, mottle: 0.45 });
    ```
